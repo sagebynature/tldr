@@ -1,0 +1,48 @@
+[server]
+host = "127.0.0.1"
+port = 0
+state_dir = "~/.cache/tts-summarizer"
+auto_start = true
+startup_timeout_ms = 3000
+request_timeout_ms = 5000
+
+[session]
+interrupt_same_session = true
+max_queue_per_session = 1
+cross_session_policy = "queue" # queue | mix | interrupt_all
+
+[summarizer]
+enabled = true
+model = "mlx-community/Qwen3-0.6B-4bit"
+word_threshold = 0
+max_words = 40
+temperature = 0.2
+max_tokens = 180
+system_prompt = """
+You summarize assistant responses for text-to-speech.
+Return only a spoken summary.
+Do not mention that this is a summary.
+If the content is a question, preserve the question instead of answering it.
+Do not include markdown, code fences, file paths, URLs, bullets, or formatting.
+"""
+user_prompt_template = """
+Summarize this response in {max_words} words or fewer.
+Preserve the practical outcome and next action.
+
+{text}
+"""
+
+[tts]
+model = "mlx-community/Qwen3-TTS-12Hz-1.7B-Base-8bit"
+voice = "Chelsie"
+lang_code = "English"
+speed = 1.6
+ref_audio = ""
+ref_text = ""
+stream = true
+sample_rate = 24000
+
+[audio]
+backend = "auto" # auto | afplay | sounddevice | file
+output_dir = "~/.cache/tts-summarizer/audio"
+save = false

@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import argparse
+import sys
+
+from .config import ConfigError, load_config
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -35,5 +38,10 @@ def main(argv: list[str] | None = None) -> int:
         return int(exc.code or 0)
 
     if args.command == "config-check":
+        try:
+            load_config(args.config)
+        except ConfigError as exc:
+            print(f"tts-summarizer config error: {exc}", file=sys.stderr)
+            return 2
         return 0
     return 0
