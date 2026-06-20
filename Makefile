@@ -1,17 +1,18 @@
 PYTHON ?= python
-TY ?= uvx ty
 CONFIG ?= config.example.toml
 
-.PHONY: build test typecheck run
+.PHONY: build test typecheck check run
 
 build:
-	PYTHONPATH=src $(PYTHON) -m compileall -q src
+	uv build
 
 test:
-	PYTHONPATH=src $(PYTHON) -m unittest discover -s tests -v
+	uv run --no-sync $(PYTHON) -m unittest discover -s tests -v
 
 typecheck:
-	$(TY) check src tests
+	uvx ty check src tests
+
+check: typecheck test build
 
 run:
-	PYTHONPATH=src $(PYTHON) -m tts_summarizer serve --config $(CONFIG)
+	uv run $(PYTHON) -m tts_summarizer serve --config $(CONFIG)

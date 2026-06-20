@@ -5,22 +5,23 @@ Harness-neutral local TTS summarizer daemon for macOS/Apple Silicon. It accepts 
 ## Requirements
 
 - Python 3.11+
-- Apple Silicon Mac for MLX/Metal runtime
-- `uv` for the default `make typecheck` target (`uvx ty ...`)
+- `uv`
+- Apple Silicon Mac for the real MLX/Metal runtime
 
 ## Install for local development
 
 ```bash
-python -m pip install -e .
+uv sync --dev
 ```
 
 ## Common commands
 
 ```bash
-make build      # byte-compile src/
-make test       # run unittest suite
-make typecheck  # run ty check src tests
-make run        # start daemon with config.example.toml
+make build      # uv build
+make test       # uv run --no-sync python -m unittest discover -s tests -v
+make typecheck  # uvx ty check src tests
+make check      # typecheck, test, then build
+make run        # uv run python -m tts_summarizer serve --config config.example.toml
 ```
 
 Use another config:
@@ -32,7 +33,7 @@ make run CONFIG=/path/to/config.toml
 ## Run the daemon
 
 ```bash
-tts-summarizer serve --config config.example.toml
+uv run tts-summarizer serve --config config.example.toml
 ```
 
 The daemon binds to `127.0.0.1`, writes its state under the configured `state_dir`, and loads MLX models lazily on first use.
@@ -41,7 +42,7 @@ The daemon binds to `127.0.0.1`, writes its state under the configured `state_di
 
 ```bash
 echo '{"caller":"manual","session_id":"demo","text":"Codex finished."}' \
-  | tts-summarizer speak --config config.example.toml
+  | uv run tts-summarizer speak --config config.example.toml
 ```
 
 A later request with the same `caller` and `session_id` interrupts stale speech for that session.
@@ -49,8 +50,8 @@ A later request with the same `caller` and `session_id` interrupts stale speech 
 ## Check and stop
 
 ```bash
-tts-summarizer health --config config.example.toml
-tts-summarizer stop --config config.example.toml
+uv run tts-summarizer health --config config.example.toml
+uv run tts-summarizer stop --config config.example.toml
 ```
 
 ## Config lookup order
@@ -61,3 +62,20 @@ tts-summarizer stop --config config.example.toml
 4. built-in defaults
 
 See `config.example.toml` for all model, prompt, session, server, and audio settings.
+
+## Versioning and releases
+
+Version is stored in `pyproject.toml` at `project.version`.
+
+Releases use Python Semantic Release with Conventional Commits:
+
+- `fix:` bumps patch.
+- `feat:` bumps minor.
+- breaking changes bump major.
+
+On pushes to `main`, `.github/workflows/release.yml` runs `make check`, creates a GitHub release/tag when semantic-release finds releasable commits, builds with `uv build`, and publishes to PyPI through Trusted Publishing.
+
+Required GitHub setup:
+
+- `SEMANTIC_RELEASE_TOKEN` secret with permission to push release commits/tags.
+- PyPI Trusted Publisher configured for this repository and the `pypi` environment.
