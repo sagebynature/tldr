@@ -4,6 +4,7 @@ import argparse
 import sys
 
 from .config import ConfigError, load_config
+from .server import run_server
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -44,4 +45,13 @@ def main(argv: list[str] | None = None) -> int:
             print(f"tts-summarizer config error: {exc}", file=sys.stderr)
             return 2
         return 0
+
+    if args.command == "serve":
+        try:
+            config = load_config(args.config)
+        except ConfigError as exc:
+            print(f"tts-summarizer config error: {exc}", file=sys.stderr)
+            return 2
+        return run_server(config)
+
     return 0
