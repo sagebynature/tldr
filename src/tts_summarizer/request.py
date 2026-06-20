@@ -27,12 +27,15 @@ class SpeechRequest:
         session_id = data.get("session_id")
         event = data.get("event")
         metadata = data.get("metadata")
+        clean_metadata: dict[str, object] = {}
+        if isinstance(metadata, dict):
+            clean_metadata = {str(key): value for key, value in metadata.items()}
         return cls(
             text=text,
             caller=caller if isinstance(caller, str) and caller else "default",
             session_id=session_id if isinstance(session_id, str) and session_id else fallback_session_id(),
             event=event if isinstance(event, str) else "",
-            metadata=metadata if isinstance(metadata, dict) else {},
+            metadata=clean_metadata,
         )
 
     @classmethod

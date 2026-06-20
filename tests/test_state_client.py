@@ -15,7 +15,7 @@ class StateClientTests(unittest.TestCase):
             cfg = load_config(str(cfg_path), cwd=Path(tmp), home=Path(tmp))
             write_state(cfg, "127.0.0.1", 4321, os.getpid())
             state = read_state(cfg)
-        self.assertIsNotNone(state)
+        assert state is not None
         self.assertEqual(state.host, "127.0.0.1")
         self.assertEqual(state.port, 4321)
         self.assertEqual(state.pid, os.getpid())

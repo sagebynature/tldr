@@ -89,7 +89,9 @@ def run_server(config: Config) -> int:
     service = TtsService(config)
     handler = type("ConfiguredHandler", (Handler,), {"service": service})
     httpd = ThreadingHTTPServer((config.server.host, config.server.port), handler)
-    host, port = httpd.server_address
+    address = httpd.server_address
+    host = str(address[0])
+    port = int(address[1])
     write_state(config, host, port, os.getpid())
     try:
         httpd.serve_forever()

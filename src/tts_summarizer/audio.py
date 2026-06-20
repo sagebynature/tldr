@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Iterable
+from collections.abc import Iterable as IterableABC
+from typing import Any, Iterable, Protocol, cast
 import math
 import subprocess
 import time
@@ -10,6 +11,10 @@ import wave
 from .config import AudioConfig
 from .session import WorkToken
 from .speech import AudioChunk
+
+
+class SupportsToList(Protocol):
+    def tolist(self) -> Any: ...
 
 
 class AudioPlayer:
@@ -45,13 +50,21 @@ def write_wav(path: Path, chunk: AudioChunk) -> None:
 
 
 def _to_float_list(samples: object) -> list[float]:
+    raw: Any
     if hasattr(samples, "tolist"):
-        raw = samples.tolist()
+        raw = cast(SupportsToList, samples).tolist()
     else:
         raw = samples
+    return [float(item) for item in _flatten(raw)]
+
+
+def _flatten(raw: Any) -> list[Any]:
     if isinstance(raw, list) and raw and isinstance(raw[0], list):
-        raw = [item for row in raw for item in row]
-    return [float(item) for item in raw]
+        rows = cast(list[Any], raw)
+        return [item for row in rows for item in cast(Iterable[Any], row)]
+    if isinstance(raw, IterableABC) and not isinstance(raw, (str, bytes)):
+        return list(cast(Iterable[Any], raw))
+    return [raw]
 
 
 def _to_i16(sample: float) -> bytes:

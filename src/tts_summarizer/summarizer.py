@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Protocol
+from typing import Any, Callable, Protocol, cast
 import sys
 
 from .config import SummarizerConfig
@@ -15,14 +15,16 @@ class MlxLmBackend:
         self._model = None
         self._tokenizer = None
         self._model_name = ""
-        self._generate = None
+        self._generate: Callable[..., str] | None = None
 
     def _load(self, model_name: str):
         if self._model is not None and self._model_name == model_name:
             return self._model, self._tokenizer
-        from mlx_lm import generate, load  # type: ignore
+        from mlx_lm import generate, load
 
-        model, tokenizer = load(model_name)
+        loaded = cast(Any, load)(model_name)
+        model = loaded[0]
+        tokenizer = loaded[1]
         self._generate = generate
         self._model = model
         self._tokenizer = tokenizer
@@ -32,7 +34,10 @@ class MlxLmBackend:
     def generate(self, messages: list[dict[str, str]], config: SummarizerConfig) -> str:
         model, tokenizer = self._load(config.model)
         prompt = tokenizer.apply_chat_template(messages, add_generation_prompt=True)
-        return self._generate(
+        generate = self._generate
+        if generate is None:
+            raise RuntimeError("mlx-lm generator was not loaded")
+        return generate(
             model,
             tokenizer,
             prompt=prompt,

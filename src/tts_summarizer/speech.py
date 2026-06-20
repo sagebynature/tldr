@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Any, Protocol, cast
 
 from .config import TtsConfig
 
@@ -24,9 +24,9 @@ class MlxAudioBackend:
     def _load(self, model_name: str):
         if self._model is not None and self._model_name == model_name:
             return self._model
-        from mlx_audio.tts.utils import load_model  # type: ignore
+        from mlx_audio.tts.utils import load_model
 
-        self._model = load_model(model_name)
+        self._model = cast(Any, load_model)(model_name)
         self._model_name = model_name
         return self._model
 
