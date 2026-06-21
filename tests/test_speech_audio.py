@@ -19,31 +19,10 @@ class SpeechAudioTests(unittest.TestCase):
         generator.generate("hello")
 
     def test_mlx_backend_uses_configured_generate_kwargs(self):
-        class Result:
-            audio = [0.0]
-            sample_rate = 8000
+        calls = []
 
         class Model:
-            sample_rate = 8000
-
-            def __init__(self):
-                self.kwargs = {}
-
-            def generate(self, **kwargs):
-                self.kwargs = kwargs
-                return [Result()]
-
-        class Backend:
-            def __init__(self, model):
-                self.model = model
-
-            def generate(self, text, config):
-                from tts_summarizer.speech import MlxAudioBackend
-
-                backend = MlxAudioBackend()
-                backend._model = self.model
-                backend._model_name = config.model
-                return backend.generate(text, config)
+            pass
 
         model = Model()
         config = TtsConfig(
@@ -51,9 +30,31 @@ class SpeechAudioTests(unittest.TestCase):
             sample_rate=8000,
             generate_kwargs={"cfg_scale": 2.5, "steps": 30},
         )
-        chunks = Backend(model).generate("hello", config)
-        self.assertEqual(len(chunks), 1)
-        self.assertEqual(model.kwargs, {"text": "hello", "cfg_scale": 2.5, "steps": 30})
+
+        def fake_generate_audio(*args, **kwargs):
+            calls.append((args, kwargs))
+
+        from tts_summarizer.speech import MlxAudioBackend
+
+        backend = MlxAudioBackend()
+        backend._model = model
+        backend._model_name = config.model
+
+        with patch("tts_summarizer.speech.generate_audio", fake_generate_audio):
+            backend.generate("hello", config)
+
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0][0], ("hello",))
+        self.assertEqual(
+            calls[0][1],
+            {
+                "model": model,
+                "stream": True,
+                "play": True,
+                "cfg_scale": 2.5,
+                "steps": 30,
+            },
+        )
 
     def test_audio_player_file_backend_writes_wav(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -62,7 +63,7 @@ class SpeechAudioTests(unittest.TestCase):
             files = list(Path(tmp).glob("*.wav"))
         self.assertEqual(len(files), 1)
 
-    def test_audio_player_ffplay_backend_uses_playback_path(self):
+    def test_audio_player_auto_and_ffplay_backends_use_ffplay_command(self):
         calls = []
 
         class FinishedProcess:
@@ -73,12 +74,23 @@ class SpeechAudioTests(unittest.TestCase):
             calls.append(args)
             return FinishedProcess()
 
-        with tempfile.TemporaryDirectory() as tmp:
-            player = AudioPlayer(AudioConfig(backend="ffplay", output_dir=tmp, save=False))
-            with patch("tts_summarizer.audio.subprocess.Popen", fake_popen):
-                player.play([AudioChunk(samples=[0.0], sample_rate=8000)])
+        for backend in ("auto", "ffplay"):
+            with self.subTest(backend=backend):
+                calls.clear()
+                with tempfile.TemporaryDirectory() as tmp:
+                    player = AudioPlayer(
+                        AudioConfig(backend=backend, output_dir=tmp, save=False)
+                    )
+                    with patch("tts_summarizer.audio.subprocess.Popen", fake_popen):
+                        player.play([AudioChunk(samples=[0.0], sample_rate=8000)])
 
-        self.assertEqual(len(calls), 1)
+                    self.assertEqual(len(calls), 1)
+                    wav_path = calls[0][-1]
+                    self.assertEqual(
+                        calls[0],
+                        ["ffplay", "-nodisp", "-autoexit", "-loglevel", "error", wav_path],
+                    )
+                    self.assertTrue(Path(wav_path).exists())
 
 
 if __name__ == "__main__":
