@@ -101,6 +101,22 @@ class ServerTests(unittest.TestCase):
         self.assertTrue(service.process_pending())
         self.assertTrue(player.done.wait(1))
 
+    def test_same_session_request_cancels_active_playback_token(self):
+        cancelled = []
+
+        class BlockingPlayer:
+            def play(self, chunks, token=None):
+                service.handle(SpeechRequest(text="new", caller="c", session_id="s"))
+                cancelled.append(token.cancelled())
+
+        service = TtsService(
+            Config(), summarizer=FakeSummarizer(), speech=FakeSpeech(), player=BlockingPlayer()
+        )
+        service.handle(SpeechRequest(text="old", caller="c", session_id="s"))
+
+        self.assertTrue(service.process_pending())
+        self.assertEqual(cancelled, [True])
+
     def test_service_handle_does_not_start_worker_thread(self):
         with unittest.mock.patch("tts_summarizer.server.threading.Thread") as thread:
             service = TtsService(

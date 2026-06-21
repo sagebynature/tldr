@@ -4,7 +4,9 @@ from unittest.mock import patch
 from pathlib import Path
 
 from tts_summarizer.audio import AudioPlayer
-from tts_summarizer.config import AudioConfig, TtsConfig
+from tts_summarizer.config import AudioConfig, SessionConfig, TtsConfig
+from tts_summarizer.request import SpeechRequest
+from tts_summarizer.session import SessionManager
 from tts_summarizer.speech import AudioChunk, SpeechGenerator
 
 
@@ -18,42 +20,36 @@ class SpeechAudioTests(unittest.TestCase):
         generator = SpeechGenerator(TtsConfig(sample_rate=8000), backend=FakeBackend())
         generator.generate("hello")
 
-    def test_mlx_backend_uses_configured_generate_kwargs(self):
+    def test_mlx_backend_returns_audio_chunks_from_model_results(self):
         calls = []
 
-        class Model:
-            pass
+        class Result:
+            audio = [0.1, -0.1]
+            sample_rate = 16000
 
-        model = Model()
+        class Model:
+            def generate(self, **kwargs):
+                calls.append(kwargs)
+                return [Result()]
+
         config = TtsConfig(
             model="fake",
             sample_rate=8000,
             generate_kwargs={"cfg_scale": 2.5, "steps": 30},
         )
 
-        def fake_generate_audio(*args, **kwargs):
-            calls.append((args, kwargs))
-
         from tts_summarizer.speech import MlxAudioBackend
 
         backend = MlxAudioBackend()
-        backend._model = model
+        backend._model = Model()
         backend._model_name = config.model
 
-        with patch("tts_summarizer.speech.generate_audio", fake_generate_audio):
-            backend.generate("hello", config)
+        chunks = backend.generate("hello", config)
 
-        self.assertEqual(len(calls), 1)
-        self.assertEqual(calls[0][0], ("hello",))
+        self.assertEqual(calls, [{"text": "hello", "cfg_scale": 2.5, "steps": 30}])
         self.assertEqual(
-            calls[0][1],
-            {
-                "model": model,
-                "stream": True,
-                "play": True,
-                "cfg_scale": 2.5,
-                "steps": 30,
-            },
+            chunks,
+            [AudioChunk(samples=[0.1, -0.1], sample_rate=16000)],
         )
 
     def test_audio_player_file_backend_writes_wav(self):
@@ -92,6 +88,31 @@ class SpeechAudioTests(unittest.TestCase):
                     )
                     self.assertTrue(Path(wav_path).exists())
 
+
+    def test_audio_player_terminates_ffplay_when_token_cancelled(self):
+        events = []
+        manager = SessionManager(SessionConfig(interrupt_same_session=True))
+        token = manager.begin(SpeechRequest(text="old", caller="c", session_id="s"))
+
+        class Proc:
+            def __init__(self, command):
+                self.polls = 0
+
+            def poll(self):
+                self.polls += 1
+                if self.polls == 1:
+                    manager.begin(SpeechRequest(text="new", caller="c", session_id="s"))
+                return None
+
+            def terminate(self):
+                events.append("terminated")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            player = AudioPlayer(AudioConfig(backend="ffplay", output_dir=tmp, save=False))
+            with patch("tts_summarizer.audio.subprocess.Popen", Proc):
+                player.play([AudioChunk(samples=[0.0], sample_rate=8000)], token=token)
+
+        self.assertEqual(events, ["terminated"])
 
 if __name__ == "__main__":
     unittest.main()

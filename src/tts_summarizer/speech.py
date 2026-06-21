@@ -5,7 +5,6 @@ import logging
 from typing import Any, Protocol, cast
 
 from .config import TtsConfig
-from mlx_audio.tts.generate import generate_audio
 
 
 logger = logging.getLogger(__name__)
@@ -37,7 +36,7 @@ class MlxAudioBackend:
         logger.info("tts model ready model=%s", model_name)
         return self._model
 
-    def generate(self, text: str, config: TtsConfig) -> None:
+    def generate(self, text: str, config: TtsConfig) -> list[AudioChunk]:
         model = self._load(config.model)
         kwargs = dict(config.generate_kwargs)
         logger.info(
@@ -46,7 +45,14 @@ class MlxAudioBackend:
             sorted(kwargs),
             len(text),
         )
-        generate_audio(text, model=model, stream=True, play=True, **kwargs)
+        results = model.generate(text=text, **kwargs)
+        return [
+            AudioChunk(
+                samples=getattr(result, "audio", result),
+                sample_rate=getattr(result, "sample_rate", config.sample_rate),
+            )
+            for result in results
+        ]
 
 
 class SpeechGenerator:
@@ -54,5 +60,5 @@ class SpeechGenerator:
         self.config = config
         self.backend = backend or MlxAudioBackend()
 
-    def generate(self, text: str) -> None:
-        self.backend.generate(text, self.config)
+    def generate(self, text: str) -> list[AudioChunk]:
+        return self.backend.generate(text, self.config)
