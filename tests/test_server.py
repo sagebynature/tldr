@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 
 from tts_summarizer.config import Config
 from tts_summarizer.request import SpeechRequest
-from tts_summarizer.server import TtsService, create_app
+from tts_summarizer.server import TtsService, create_app, run_server
 from tts_summarizer.speech import AudioChunk
 
 
@@ -115,6 +115,62 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(response["status"], "accepted")
         thread.assert_not_called()
 
+
+    def test_run_server_joins_non_daemon_worker_after_uvicorn_stops(self):
+        events = []
+
+        class FakeSocket:
+            def bind(self, address):
+                events.append(("bind", address))
+
+            def listen(self):
+                events.append("listen")
+
+            def getsockname(self):
+                return ("127.0.0.1", 0)
+
+        class FakeService:
+            def __init__(self, config):
+                self.config = config
+
+            def run(self):
+                events.append("run")
+
+            def stop(self):
+                events.append("stop")
+
+        class FakeServer:
+            def __init__(self, config):
+                self.config = config
+
+            def run(self, sockets):
+                events.append(("server", sockets))
+
+        class FakeThread:
+            def __init__(self, target=None, daemon=None, **_kwargs):
+                self.target = target
+                self.daemon = daemon
+
+            def start(self):
+                events.append(("start", self.daemon))
+
+            def join(self):
+                events.append("join")
+
+        with (
+            unittest.mock.patch("tts_summarizer.server.TtsService", FakeService),
+            unittest.mock.patch("tts_summarizer.server.socket.socket", return_value=FakeSocket()),
+            unittest.mock.patch("tts_summarizer.server.write_state"),
+            unittest.mock.patch("tts_summarizer.server.uvicorn.Server", FakeServer),
+            unittest.mock.patch(
+                "tts_summarizer.server.threading.Thread",
+                side_effect=lambda *args, **kwargs: FakeThread(*args, **kwargs),
+            ) as thread,
+        ):
+            self.assertEqual(run_server(Config()), 0)
+
+        self.assertIs(thread.call_args.kwargs["daemon"], False)
+        self.assertEqual(events[-2:], ["stop", "join"])
     def test_fastapi_openapi_schema_exists(self):
         service = TtsService(Config(), summarizer=FakeSummarizer(), speech=FakeSpeech(), player=FakePlayer())
         client = TestClient(create_app(Config(), service=service))

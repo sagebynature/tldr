@@ -147,10 +147,11 @@ def run_server(config: Config) -> int:
     server_config = uvicorn.Config(app, host=config.server.host, port=int(port), log_config=None)
     server = uvicorn.Server(server_config)
     app.state.server = server
-    worker = threading.Thread(target=service.run, daemon=True)
+    worker = threading.Thread(target=service.run, daemon=False)
     worker.start()
     try:
         server.run(sockets=[sock])
     finally:
         service.stop()
+        worker.join()
     return 0
