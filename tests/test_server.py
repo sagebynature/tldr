@@ -2,10 +2,11 @@ import threading
 import time
 import unittest
 import unittest.mock
+from fastapi.testclient import TestClient
 
 from tts_summarizer.config import Config
 from tts_summarizer.request import SpeechRequest
-from tts_summarizer.server import TtsService
+from tts_summarizer.server import TtsService, create_app
 from tts_summarizer.speech import AudioChunk
 
 
@@ -113,6 +114,48 @@ class ServerTests(unittest.TestCase):
             )
         self.assertEqual(response["status"], "accepted")
         thread.assert_not_called()
+
+    def test_fastapi_openapi_schema_exists(self):
+        service = TtsService(Config(), summarizer=FakeSummarizer(), speech=FakeSpeech(), player=FakePlayer())
+        client = TestClient(create_app(Config(), service=service))
+
+        response = client.get("/openapi.json")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("/v1/speak", response.json()["paths"])
+
+    def test_fastapi_health_route(self):
+        service = TtsService(Config(), summarizer=FakeSummarizer(), speech=FakeSpeech(), player=FakePlayer())
+        client = TestClient(create_app(Config(), service=service))
+
+        response = client.get("/health")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["status"], "ok")
+
+    def test_fastapi_speak_route_accepts_current_json(self):
+        player = FakePlayer()
+        service = TtsService(Config(), summarizer=FakeSummarizer(), speech=FakeSpeech(), player=player)
+        client = TestClient(create_app(Config(), service=service))
+
+        response = client.post(
+            "/v1/speak",
+            json={"text": "hello", "caller": "c", "session_id": "s"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["status"], "accepted")
+        self.assertTrue(service.process_pending())
+        self.assertTrue(player.done.wait(1))
+
+    def test_fastapi_speak_route_rejects_invalid_json(self):
+        service = TtsService(Config(), summarizer=FakeSummarizer(), speech=FakeSpeech(), player=FakePlayer())
+        client = TestClient(create_app(Config(), service=service))
+
+        response = client.post("/v1/speak", json={"text": ""})
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("error", response.json())
 
 
 if __name__ == "__main__":

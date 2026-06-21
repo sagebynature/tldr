@@ -1,11 +1,14 @@
 from __future__ import annotations
 
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from queue import Empty, Queue
-import json
 import logging
 import os
+import socket
 import threading
+
+from fastapi import FastAPI
+from fastapi.responses import JSONResponse
+import uvicorn
 
 from .audio import AudioPlayer
 from .config import Config
@@ -86,7 +89,15 @@ class TtsService:
                 )
                 return
             logger.info("generating speech session=%s", request.session_key())
-            self.speech.generate(text)
+            chunks = self.speech.generate(text)
+            if token.cancelled():
+                logger.info(
+                    "speech request cancelled before playback session=%s",
+                    request.session_key(),
+                )
+                return
+            with self._audio_lock:
+                self.player.play(chunks, token=token)
             logger.info("speech playback complete session=%s", request.session_key())
         except Exception:
             logger.exception("speech request failed session=%s", request.session_key())
@@ -97,61 +108,49 @@ class TtsService:
         return {"status": "ok", "pid": os.getpid()}
 
 
-class Handler(BaseHTTPRequestHandler):
-    service: TtsService
+def create_app(config: Config, service: TtsService | None = None) -> FastAPI:
+    service = service or TtsService(config)
+    app = FastAPI(title="tts-summarizer")
+    app.state.service = service
 
-    def do_GET(self):
-        if self.path == "/health":
-            self._send(200, self.service.health())
-            return
-        self._send(404, {"error": "not found"})
+    @app.get("/health")
+    def health() -> dict[str, object]:
+        return service.health()
 
-    def do_POST(self):
-        if self.path == "/v1/speak":
-            self._speak()
-            return
-        if self.path == "/shutdown":
-            self.service.stop()
-            self._send(200, {"status": "shutting_down"})
-            threading.Thread(target=self.server.shutdown).start()
-            return
-        self._send(404, {"error": "not found"})
-
-    def log_message(self, format, *args):
-        return
-
-    def _speak(self):
-        length = int(self.headers.get("Content-Length", "0"))
+    @app.post("/v1/speak")
+    def speak(payload: dict[str, object]):
         try:
-            payload = json.loads(self.rfile.read(length).decode("utf-8"))
             request = SpeechRequest.from_json(payload)
-        except (json.JSONDecodeError, RequestError) as exc:
-            self._send(400, {"error": str(exc)})
-            return
-        response = self.service.handle(request)
-        self._send(200, response)
+        except RequestError as exc:
+            return JSONResponse(status_code=400, content={"error": str(exc)})
+        return service.handle(request)
 
-    def _send(self, status: int, payload: dict[str, object]) -> None:
-        body = json.dumps(payload).encode("utf-8")
-        self.send_response(status)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
+    @app.post("/shutdown")
+    def shutdown() -> dict[str, object]:
+        service.stop()
+        server = getattr(app.state, "server", None)
+        if server is not None:
+            server.should_exit = True
+        return {"status": "shutting_down"}
+
+    return app
 
 
 def run_server(config: Config) -> int:
     service = TtsService(config)
-    handler = type("ConfiguredHandler", (Handler,), {"service": service})
-    httpd = ThreadingHTTPServer((config.server.host, config.server.port), handler)
-    host, port = httpd.server_address[:2]
+    app = create_app(config, service)
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.bind((config.server.host, config.server.port))
+    sock.listen()
+    host, port = sock.getsockname()[:2]
     write_state(config, str(host), int(port), os.getpid())
-    server_thread = threading.Thread(target=httpd.serve_forever)
-    server_thread.start()
+    server_config = uvicorn.Config(app, host=config.server.host, port=int(port), log_config=None)
+    server = uvicorn.Server(server_config)
+    app.state.server = server
+    worker = threading.Thread(target=service.run, daemon=True)
+    worker.start()
     try:
-        service.run()
+        server.run(sockets=[sock])
     finally:
-        httpd.shutdown()
-        server_thread.join()
-        httpd.server_close()
+        service.stop()
     return 0
