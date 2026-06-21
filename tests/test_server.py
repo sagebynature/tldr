@@ -230,6 +230,28 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("error", response.json())
 
+    def test_fastapi_speak_route_rejects_malformed_json_with_error_contract(self):
+        service = TtsService(Config(), summarizer=FakeSummarizer(), speech=FakeSpeech(), player=FakePlayer())
+        client = TestClient(create_app(Config(), service=service))
+
+        response = client.post(
+            "/v1/speak",
+            content='{"text":',
+            headers={"content-type": "application/json"},
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(set(response.json()), {"error"})
+
+    def test_fastapi_speak_route_rejects_non_object_json_with_error_contract(self):
+        service = TtsService(Config(), summarizer=FakeSummarizer(), speech=FakeSpeech(), player=FakePlayer())
+        client = TestClient(create_app(Config(), service=service))
+
+        response = client.post("/v1/speak", json=["hello"])
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(set(response.json()), {"error"})
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -30,6 +30,12 @@ class SummarizerTests(unittest.TestCase):
             "Read supplied URL supplied URL",
         )
 
+    def test_replace_urls_replaces_case_insensitive_http_schemes(self):
+        self.assertEqual(
+            replace_urls("Open HTTPS://private.example/token and Http://Example.test/path"),
+            "Open supplied URL and supplied URL",
+        )
+
     def test_threshold_skips_model(self):
         backend = FakeBackend()
         summarizer = Summarizer(SummarizerConfig(word_threshold=10), backend=backend)

@@ -7,6 +7,7 @@ import socket
 import threading
 
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 import uvicorn
 
@@ -112,6 +113,10 @@ def create_app(config: Config, service: TtsService | None = None) -> FastAPI:
     service = service or TtsService(config)
     app = FastAPI(title="tts-summarizer")
     app.state.service = service
+
+    @app.exception_handler(RequestValidationError)
+    def validation_error(_request: object, _exc: RequestValidationError) -> JSONResponse:
+        return JSONResponse(status_code=400, content={"error": "invalid request body"})
 
     @app.get("/health")
     def health() -> dict[str, object]:

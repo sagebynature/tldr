@@ -10,7 +10,7 @@ from .config import SummarizerConfig
 
 
 logger = logging.getLogger(__name__)
-URL_PATTERN = re.compile(r"https?://[^\s<>)\]}]+")
+URL_PATTERN = re.compile(r"https?://[^\s<>)\]}]+", re.IGNORECASE)
 
 
 class SummaryBackend(Protocol):
