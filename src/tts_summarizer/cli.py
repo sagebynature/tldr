@@ -62,7 +62,8 @@ def main(argv: list[str] | None = None) -> int:
     timeout = config.server.request_timeout_ms / 1000
     try:
         if args.command == "speak":
-            request = SpeechRequest.from_cli(args.text, sys.stdin.read(), args.caller, args.session_id)
+            stdin_text = "" if args.text is not None else sys.stdin.read()
+            request = SpeechRequest.from_cli(args.text, stdin_text, args.caller, args.session_id)
             post_json(f"{base_url}/v1/speak", request.to_json(), timeout)
             return 0
         if args.command == "health":

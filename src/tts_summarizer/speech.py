@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import logging
 from typing import Any, Protocol, cast
 
 from .config import TtsConfig
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -24,26 +28,23 @@ class MlxAudioBackend:
     def _load(self, model_name: str):
         if self._model is not None and self._model_name == model_name:
             return self._model
+        logger.info("loading tts model=%s", model_name)
         from mlx_audio.tts.utils import load_model
 
         self._model = cast(Any, load_model)(model_name)
         self._model_name = model_name
+        logger.info("tts model ready model=%s", model_name)
         return self._model
 
     def generate(self, text: str, config: TtsConfig) -> list[AudioChunk]:
         model = self._load(config.model)
-        kwargs = {
-            "voice": config.voice or None,
-            "language": config.language or None,
-            "speed": config.speed,
-            "ref_audio": config.ref_audio or None,
-            "ref_text": config.ref_text or None,
-        }
-        kwargs = {key: value for key, value in kwargs.items() if value is not None}
+        kwargs = dict(config.generate_kwargs)
+        logger.info("calling tts generate model=%s kwargs=%s text_chars=%s", config.model, sorted(kwargs), len(text))
         chunks: list[AudioChunk] = []
         for result in model.generate(text=text, **kwargs):
             sample_rate = int(getattr(result, "sample_rate", getattr(model, "sample_rate", config.sample_rate)))
             chunks.append(AudioChunk(samples=result.audio, sample_rate=sample_rate))
+        logger.info("tts generate complete model=%s chunks=%s", config.model, len(chunks))
         return chunks
 
 

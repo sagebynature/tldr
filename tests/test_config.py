@@ -22,11 +22,11 @@ class ConfigTests(unittest.TestCase):
             cwd.mkdir()
             (home / ".config" / "tts-summarizer").mkdir(parents=True)
             (home / ".config" / "tts-summarizer" / "config.toml").write_text(
-                '[tts]\nvoice = "UserVoice"\n', encoding="utf-8"
+                '[tts.generate_kwargs]\nvoice = "UserVoice"\n', encoding="utf-8"
             )
-            (cwd / "config.toml").write_text('[tts]\nvoice = "CwdVoice"\n', encoding="utf-8")
+            (cwd / "config.toml").write_text('[tts.generate_kwargs]\nvoice = "CwdVoice"\n', encoding="utf-8")
             cfg = load_config(None, cwd=cwd, home=home)
-        self.assertEqual(cfg.tts.voice, "CwdVoice")
+        self.assertEqual(cfg.tts.generate_kwargs["voice"], "CwdVoice")
 
     def test_explicit_missing_config_fails(self):
         with tempfile.TemporaryDirectory() as tmp:

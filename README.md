@@ -63,6 +63,17 @@ uv run tts-summarizer stop --config config.example.toml
 
 See `config.example.toml` for all model, prompt, session, server, and audio settings.
 
+Model-specific `mlx-audio` generation arguments belong under `[tts.generate_kwargs]`:
+
+```toml
+[tts]
+model = "mlx-community/Qwen3-TTS-12Hz-1.7B-Base-8bit"
+
+[tts.generate_kwargs]
+voice = "Chelsie"
+lang_code = "English"
+```
+
 ## Logging
 
 The package ships `src/tts_summarizer/logging.conf`, using `colorlog.ColoredFormatter` like `korean-name-generator`.

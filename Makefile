@@ -1,5 +1,5 @@
 PYTHON ?= python
-CONFIG ?= config.example.toml
+CONFIG ?= config.toml
 
 .PHONY: build test typecheck check run
 

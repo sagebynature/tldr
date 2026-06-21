@@ -54,13 +54,9 @@ class SummarizerConfig:
 @dataclass(frozen=True)
 class TtsConfig:
     model: str = "mlx-community/Qwen3-TTS-12Hz-1.7B-Base-8bit"
-    voice: str = "Chelsie"
-    language: str = "English"
-    speed: float = 1.6
-    ref_audio: str = ""
-    ref_text: str = ""
     stream: bool = True
     sample_rate: int = 24000
+    generate_kwargs: dict[str, object] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

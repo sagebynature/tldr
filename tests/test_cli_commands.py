@@ -15,9 +15,14 @@ class CliCommandTests(unittest.TestCase):
             calls.append((url, payload, timeout))
             return {"status": "accepted"}
 
+        class BlockingStdin:
+            def read(self):
+                raise AssertionError("stdin should not be read when --text is provided")
+
+
         with patch("tts_summarizer.cli.daemon_base_url", fake_base_url), patch(
             "tts_summarizer.cli.post_json", fake_post
-        ):
+        ), patch("sys.stdin", BlockingStdin()):
             code = cli.main(["speak", "--caller", "manual", "--session-id", "s", "--text", "hello"])
         self.assertEqual(code, 0)
         self.assertEqual(calls[0][0], "http://127.0.0.1:9999/v1/speak")

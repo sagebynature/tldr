@@ -1,6 +1,6 @@
 [server]
 host = "127.0.0.1"
-port = 0
+port = 9200
 state_dir = "~/.cache/tts-summarizer"
 auto_start = true
 startup_timeout_ms = 3000
@@ -34,13 +34,13 @@ Preserve the practical outcome and next action.
 
 [tts]
 model = "mlx-community/Qwen3-TTS-12Hz-1.7B-CustomVoice-8bit"
+stream = true
+sample_rate = 24000
+
+[tts.generate_kwargs]
 voice = "Aiden"
 language = "English"
 speed = 2.0
-ref_audio = ""
-ref_text = ""
-stream = true
-sample_rate = 24000
 
 [audio]
 backend = "auto"                             # auto | afplay | sounddevice | file

@@ -22,7 +22,9 @@ class StateClientTests(unittest.TestCase):
 
     def test_missing_state_returns_none(self):
         with tempfile.TemporaryDirectory() as tmp:
-            cfg = load_config(None, cwd=Path(tmp), home=Path(tmp))
+            cfg_path = Path(tmp) / "config.toml"
+            cfg_path.write_text(f'[server]\nstate_dir = "{tmp}/missing-state"\n', encoding="utf-8")
+            cfg = load_config(str(cfg_path), cwd=Path(tmp), home=Path(tmp))
             self.assertIsNone(read_state(cfg))
 
 

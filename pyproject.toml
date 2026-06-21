@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "tts-summarizer"
-version = "0.1.0"
+version = "0.0.1"
 description = "Harness-neutral local TTS summarizer daemon using MLX"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -17,9 +17,7 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = [
-  "ty==0.0.23",
-]
+dev = ["ty==0.0.23"]
 
 [project.scripts]
 tts-summarizer = "tts_summarizer.cli:main"
@@ -29,7 +27,14 @@ packages = ["src/tts_summarizer"]
 force-include = { "src/tts_summarizer/logging.conf" = "tts_summarizer/logging.conf" }
 
 [tool.hatch.build.targets.sdist]
-include = ["src", "tests", "README.md", "CHANGELOG.md", "config.example.toml", "Makefile"]
+include = [
+  "src",
+  "tests",
+  "README.md",
+  "CHANGELOG.md",
+  "config.example.toml",
+  "Makefile",
+]
 
 [tool.ty.environment]
 root = ["src"]
