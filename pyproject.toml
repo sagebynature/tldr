@@ -10,7 +10,6 @@ readme = "README.md"
 requires-python = ">=3.11"
 authors = [{ name = "sagebynature" }]
 dependencies = [
-  "mlx-lm; platform_system == 'Darwin' and platform_machine == 'arm64'",
   "mlx-audio; platform_system == 'Darwin' and platform_machine == 'arm64'",
   "colorlog>=6.10.1",
   "numpy",

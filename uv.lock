@@ -808,7 +808,6 @@ dependencies = [
     { name = "colorlog" },
     { name = "fastapi" },
     { name = "mlx-audio", marker = "platform_machine == 'arm64' and sys_platform == 'darwin'" },
-    { name = "mlx-lm", marker = "platform_machine == 'arm64' and sys_platform == 'darwin'" },
     { name = "numpy" },
     { name = "uvicorn" },
 ]
@@ -825,7 +824,6 @@ requires-dist = [
     { name = "colorlog", specifier = ">=6.10.1" },
     { name = "fastapi" },
     { name = "mlx-audio", marker = "platform_machine == 'arm64' and sys_platform == 'darwin'" },
-    { name = "mlx-lm", marker = "platform_machine == 'arm64' and sys_platform == 'darwin'" },
     { name = "numpy" },
     { name = "uvicorn" },
 ]
