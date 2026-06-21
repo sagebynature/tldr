@@ -77,6 +77,7 @@ class Summarizer:
             return text
         if count_words(text) <= self.config.word_threshold:
             return text
+        logger.info("summarizing text chars=%s words=%s prompt=%s", len(text), count_words(text), self.config.system_prompt)
         messages = [
             {"role": "system", "content": self.config.system_prompt},
             {
