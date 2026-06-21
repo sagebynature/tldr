@@ -107,6 +107,7 @@ class ServerTests(unittest.TestCase):
         class BlockingPlayer:
             def play(self, chunks, token=None):
                 service.handle(SpeechRequest(text="new", caller="c", session_id="s"))
+                assert token is not None
                 cancelled.append(token.cancelled())
 
         service = TtsService(

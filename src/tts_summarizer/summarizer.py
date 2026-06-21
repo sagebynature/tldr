@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable, Protocol
+from typing import Any, Callable, Protocol, cast
 from urllib.request import Request, urlopen
 import json
 import logging
@@ -42,7 +42,7 @@ class OpenAICompatibleBackend:
         if config.api_key:
             headers["Authorization"] = f"Bearer {config.api_key}"
         request = Request(url, data=body, headers=headers, method="POST")
-        with self.urlopen(request, timeout=self.timeout) as response:
+        with cast(Any, self.urlopen(request, timeout=self.timeout)) as response:
             payload = json.loads(response.read().decode("utf-8"))
         return str(payload["choices"][0]["message"]["content"])
 

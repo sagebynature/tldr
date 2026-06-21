@@ -63,11 +63,14 @@ class SpeechRequest:
             payload = {"text": stdin_text}
         if not isinstance(payload, dict):
             raise RequestError("stdin JSON must be an object")
+        clean_payload: dict[str, object] = {
+            str(key): value for key, value in payload.items()
+        }
         if caller is not None:
-            payload["caller"] = caller
+            clean_payload["caller"] = caller
         if session_id is not None:
-            payload["session_id"] = session_id
-        return cls.from_json(payload)
+            clean_payload["session_id"] = session_id
+        return cls.from_json(clean_payload)
 
     def to_json(self) -> dict[str, object]:
         return {
