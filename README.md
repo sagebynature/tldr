@@ -6,7 +6,10 @@ Harness-neutral local TTS summarizer daemon for macOS/Apple Silicon. It accepts 
 
 - Python 3.11+
 - `uv`
-- Apple Silicon Mac for the real MLX/Metal runtime
+- Apple Silicon Mac for MLX TTS runtime
+- FFmpeg `ffplay` available on `PATH`
+
+Installer work deferred. Future installer work should validate FFmpeg/`ffplay` before starting the daemon.
 
 ## Install for local development
 
@@ -37,6 +40,12 @@ uv run tts-summarizer serve --config config.example.toml
 ```
 
 The daemon binds to `127.0.0.1`, writes its state under the configured `state_dir`, and loads MLX models lazily on first use.
+
+FastAPI OpenAPI docs are available while the daemon is running:
+
+- `http://127.0.0.1:9200/docs`
+- `http://127.0.0.1:9200/redoc`
+- `http://127.0.0.1:9200/openapi.json`
 
 ## Send a request
 
