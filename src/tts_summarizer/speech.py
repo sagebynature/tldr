@@ -39,6 +39,7 @@ class MlxAudioBackend:
     def generate(self, text: str, config: TtsConfig) -> list[AudioChunk]:
         model = self._load(config.model)
         kwargs = dict(config.generate_kwargs)
+        kwargs.setdefault("stream", config.stream)
         logger.info(
             "calling tts generate model=%s kwargs=%s text_chars=%s",
             config.model,

@@ -20,7 +20,7 @@ class SpeechAudioTests(unittest.TestCase):
         generator = SpeechGenerator(TtsConfig(sample_rate=8000), backend=FakeBackend())
         generator.generate("hello")
 
-    def test_mlx_backend_returns_audio_chunks_from_model_results(self):
+    def test_mlx_backend_forwards_generate_kwargs_and_stream(self):
         calls = []
 
         class Result:
@@ -35,6 +35,7 @@ class SpeechAudioTests(unittest.TestCase):
         config = TtsConfig(
             model="fake",
             sample_rate=8000,
+            stream=False,
             generate_kwargs={"cfg_scale": 2.5, "steps": 30},
         )
 
@@ -46,12 +47,35 @@ class SpeechAudioTests(unittest.TestCase):
 
         chunks = backend.generate("hello", config)
 
-        self.assertEqual(calls, [{"text": "hello", "cfg_scale": 2.5, "steps": 30}])
+        self.assertEqual(calls, [{"text": "hello", "cfg_scale": 2.5, "steps": 30, "stream": False}])
         self.assertEqual(
             chunks,
             [AudioChunk(samples=[0.1, -0.1], sample_rate=16000)],
         )
 
+
+    def test_mlx_backend_preserves_stream_override_in_generate_kwargs(self):
+        calls = []
+
+        class Model:
+            def generate(self, **kwargs):
+                calls.append(kwargs)
+                return []
+
+        config = TtsConfig(
+            model="fake",
+            stream=False,
+            generate_kwargs={"stream": True},
+        )
+
+        from tts_summarizer.speech import MlxAudioBackend
+
+        backend = MlxAudioBackend()
+        backend._model = Model()
+        backend._model_name = config.model
+
+        self.assertEqual(backend.generate("hello", config), [])
+        self.assertEqual(calls, [{"text": "hello", "stream": True}])
     def test_audio_player_file_backend_writes_wav(self):
         with tempfile.TemporaryDirectory() as tmp:
             player = AudioPlayer(AudioConfig(backend="file", output_dir=tmp, save=True))
