@@ -14,10 +14,12 @@ dependencies = [
   "mlx-audio; platform_system == 'Darwin' and platform_machine == 'arm64'",
   "colorlog>=6.10.1",
   "numpy",
+  "fastapi",
+  "uvicorn",
 ]
 
 [dependency-groups]
-dev = ["ty==0.0.23", "ruff>=0.5"]
+dev = ["ty==0.0.23", "ruff>=0.5", "httpx"]
 
 [project.scripts]
 tts-summarizer = "tts_summarizer.cli:main"

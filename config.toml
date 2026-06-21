@@ -13,7 +13,9 @@ cross_session_policy = "queue" # queue | mix | interrupt_all
 
 [summarizer]
 enabled = true
-model = "mlx-community/Qwen3-0.6B-4bit"
+base_url = "http://127.0.0.1:1234/v1"
+api_key = ""
+model = "local-model"
 word_threshold = 0
 max_words = 40
 temperature = 0.2
@@ -43,6 +45,6 @@ language = "English"
 speed = 2.0
 
 [audio]
-backend = "auto"                             # auto | afplay | sounddevice | file
+backend = "auto"                             # auto | ffplay | file
 output_dir = "~/.cache/tts-summarizer/audio"
 save = false

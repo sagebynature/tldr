@@ -42,7 +42,9 @@ class SessionConfig:
 @dataclass(frozen=True)
 class SummarizerConfig:
     enabled: bool = True
-    model: str = "mlx-community/Qwen3-0.6B-4bit"
+    base_url: str = "http://127.0.0.1:1234/v1"
+    api_key: str = ""
+    model: str = "local-model"
     word_threshold: int = 0
     max_words: int = 40
     temperature: float = 0.2
