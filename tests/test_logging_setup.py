@@ -1,4 +1,3 @@
-import io
 import logging
 import tempfile
 import unittest
@@ -17,7 +16,6 @@ class LoggingSetupTests(unittest.TestCase):
 
     def test_custom_logging_config_is_loaded(self):
         with tempfile.TemporaryDirectory() as tmp:
-            log_stream = io.StringIO()
             logging_config = Path(tmp) / "logging.conf"
             logging_config.write_text(
                 "\n".join(
@@ -43,7 +41,9 @@ class LoggingSetupTests(unittest.TestCase):
                 encoding="utf-8",
             )
             cfg_path = Path(tmp) / "config.toml"
-            cfg_path.write_text(f'[logging]\nconfig_file = "{logging_config}"\n', encoding="utf-8")
+            cfg_path.write_text(
+                f'[logging]\nconfig_file = "{logging_config}"\n', encoding="utf-8"
+            )
             cfg = load_config(str(cfg_path), cwd=Path(tmp), home=Path(tmp))
             setup_logging(cfg)
         self.assertTrue(logging.getLogger().handlers)

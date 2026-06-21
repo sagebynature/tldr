@@ -63,7 +63,9 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.command == "speak":
             stdin_text = "" if args.text is not None else sys.stdin.read()
-            request = SpeechRequest.from_cli(args.text, stdin_text, args.caller, args.session_id)
+            request = SpeechRequest.from_cli(
+                args.text, stdin_text, args.caller, args.session_id
+            )
             post_json(f"{base_url}/v1/speak", request.to_json(), timeout)
             return 0
         if args.command == "health":

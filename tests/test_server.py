@@ -32,8 +32,12 @@ class FakePlayer:
 class ServerTests(unittest.TestCase):
     def test_service_speaks_request(self):
         player = FakePlayer()
-        service = TtsService(Config(), summarizer=FakeSummarizer(), speech=FakeSpeech(), player=player)
-        response = service.handle(SpeechRequest(text="hello", caller="c", session_id="s"))
+        service = TtsService(
+            Config(), summarizer=FakeSummarizer(), speech=FakeSpeech(), player=player
+        )
+        response = service.handle(
+            SpeechRequest(text="hello", caller="c", session_id="s")
+        )
         self.assertEqual(response["status"], "accepted")
         self.assertTrue(service.process_pending())
         self.assertTrue(player.done.wait(1))
@@ -50,17 +54,25 @@ class ServerTests(unittest.TestCase):
 
         player = FakePlayer()
         speech = CapturingSpeech()
-        service = TtsService(Config(), summarizer=FakeSummarizer(), speech=speech, player=player)
-        response = service.handle(SpeechRequest(text="hello", caller="c", session_id="s"))
+        service = TtsService(
+            Config(), summarizer=FakeSummarizer(), speech=speech, player=player
+        )
+        response = service.handle(
+            SpeechRequest(text="hello", caller="c", session_id="s")
+        )
         self.assertEqual(response["status"], "accepted")
         self.assertTrue(service.process_pending())
         self.assertEqual(speech.text, "summary: hello")
 
     def test_service_logs_incoming_and_summarized_text(self):
         player = FakePlayer()
-        service = TtsService(Config(), summarizer=FakeSummarizer(), speech=FakeSpeech(), player=player)
+        service = TtsService(
+            Config(), summarizer=FakeSummarizer(), speech=FakeSpeech(), player=player
+        )
         with self.assertLogs("tts_summarizer.server", level="INFO") as logs:
-            response = service.handle(SpeechRequest(text="hello", caller="c", session_id="s"))
+            response = service.handle(
+                SpeechRequest(text="hello", caller="c", session_id="s")
+            )
             self.assertEqual(response["status"], "accepted")
             self.assertTrue(service.process_pending())
         output = "\n".join(logs.output)
@@ -74,9 +86,13 @@ class ServerTests(unittest.TestCase):
                 return [AudioChunk(samples=[0.0], sample_rate=8000)]
 
         player = FakePlayer()
-        service = TtsService(Config(), summarizer=FakeSummarizer(), speech=SlowSpeech(), player=player)
+        service = TtsService(
+            Config(), summarizer=FakeSummarizer(), speech=SlowSpeech(), player=player
+        )
         started = time.monotonic()
-        response = service.handle(SpeechRequest(text="hello", caller="c", session_id="s"))
+        response = service.handle(
+            SpeechRequest(text="hello", caller="c", session_id="s")
+        )
         elapsed = time.monotonic() - started
         self.assertEqual(response["status"], "accepted")
         self.assertLess(elapsed, 0.1)
@@ -86,8 +102,15 @@ class ServerTests(unittest.TestCase):
 
     def test_service_handle_does_not_start_worker_thread(self):
         with unittest.mock.patch("tts_summarizer.server.threading.Thread") as thread:
-            service = TtsService(Config(), summarizer=FakeSummarizer(), speech=FakeSpeech(), player=FakePlayer())
-            response = service.handle(SpeechRequest(text="hello", caller="c", session_id="s"))
+            service = TtsService(
+                Config(),
+                summarizer=FakeSummarizer(),
+                speech=FakeSpeech(),
+                player=FakePlayer(),
+            )
+            response = service.handle(
+                SpeechRequest(text="hello", caller="c", session_id="s")
+            )
         self.assertEqual(response["status"], "accepted")
         thread.assert_not_called()
 

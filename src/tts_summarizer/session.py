@@ -27,7 +27,9 @@ class SessionManager:
         key = request.session_key()
         with self._lock:
             current = self._generations.get(key, 0)
-            next_generation = current + 1 if self.config.interrupt_same_session else current or 1
+            next_generation = (
+                current + 1 if self.config.interrupt_same_session else current or 1
+            )
             self._generations[key] = next_generation
             return WorkToken(key, next_generation, self)
 

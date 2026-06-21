@@ -21,7 +21,9 @@ class AudioPlayer:
     def __init__(self, config: AudioConfig):
         self.config = config
 
-    def play(self, chunks: Iterable[AudioChunk], token: WorkToken | None = None) -> None:
+    def play(
+        self, chunks: Iterable[AudioChunk], token: WorkToken | None = None
+    ) -> None:
         output_dir = Path(self.config.output_dir).expanduser()
         output_dir.mkdir(parents=True, exist_ok=True)
         for chunk in chunks:

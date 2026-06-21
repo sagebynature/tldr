@@ -19,8 +19,12 @@ class ClientError(RuntimeError):
     pass
 
 
-def post_json(url: str, payload: dict[str, object], timeout: float) -> dict[str, object]:
-    logger.debug("posting json url=%s timeout=%s keys=%s", url, timeout, sorted(payload))
+def post_json(
+    url: str, payload: dict[str, object], timeout: float
+) -> dict[str, object]:
+    logger.debug(
+        "posting json url=%s timeout=%s keys=%s", url, timeout, sorted(payload)
+    )
     request = urllib.request.Request(
         url,
         data=json.dumps(payload).encode("utf-8"),

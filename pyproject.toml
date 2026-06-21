@@ -17,7 +17,7 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["ty==0.0.23"]
+dev = ["ty==0.0.23", "ruff>=0.5"]
 
 [project.scripts]
 tts-summarizer = "tts_summarizer.cli:main"

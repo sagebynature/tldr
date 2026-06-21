@@ -33,7 +33,9 @@ class SpeechRequest:
         return cls(
             text=text,
             caller=caller if isinstance(caller, str) and caller else "default",
-            session_id=session_id if isinstance(session_id, str) and session_id else fallback_session_id(),
+            session_id=session_id
+            if isinstance(session_id, str) and session_id
+            else fallback_session_id(),
             event=event if isinstance(event, str) else "",
             metadata=clean_metadata,
         )

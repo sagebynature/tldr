@@ -92,7 +92,9 @@ def _merge_dataclass(instance: Any, values: dict[str, Any]) -> Any:
     valid = instance.__dataclass_fields__.keys()
     unknown = sorted(set(values) - set(valid))
     if unknown:
-        raise ConfigError(f"unknown config keys for {type(instance).__name__}: {', '.join(unknown)}")
+        raise ConfigError(
+            f"unknown config keys for {type(instance).__name__}: {', '.join(unknown)}"
+        )
     return replace(instance, **values)
 
 
@@ -121,7 +123,9 @@ def _read(path: Path) -> dict[str, Any]:
         raise ConfigError(f"invalid TOML in {path}: {exc}") from exc
 
 
-def load_config(explicit_path: str | None, cwd: Path | None = None, home: Path | None = None) -> Config:
+def load_config(
+    explicit_path: str | None, cwd: Path | None = None, home: Path | None = None
+) -> Config:
     cwd = cwd or Path.cwd()
     home = home or Path.home()
     if explicit_path:

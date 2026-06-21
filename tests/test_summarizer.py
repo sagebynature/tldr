@@ -26,7 +26,9 @@ class SummarizerTests(unittest.TestCase):
 
     def test_prompt_template_used(self):
         backend = FakeBackend()
-        config = SummarizerConfig(word_threshold=0, user_prompt_template="Limit {max_words}: {text}")
+        config = SummarizerConfig(
+            word_threshold=0, user_prompt_template="Limit {max_words}: {text}"
+        )
         summarizer = Summarizer(config, backend=backend)
         self.assertEqual(summarizer.summarize("long enough"), "short result")
         self.assertEqual(backend.prompt, "Limit 40: long enough")
@@ -36,33 +38,48 @@ class SummarizerTests(unittest.TestCase):
             def generate(self, messages, config):
                 return config.system_prompt
 
-        summarizer = Summarizer(SummarizerConfig(word_threshold=0), backend=EchoBackend())
-        self.assertEqual(summarizer.summarize("actual request text"), "actual request text")
+        summarizer = Summarizer(
+            SummarizerConfig(word_threshold=0), backend=EchoBackend()
+        )
+        self.assertEqual(
+            summarizer.summarize("actual request text"), "actual request text"
+        )
 
     def test_system_prompt_prefix_is_stripped_from_summary(self):
         class EchoBackend:
             def generate(self, messages, config):
                 return f"{config.system_prompt}\n\nshort useful summary"
 
-        summarizer = Summarizer(SummarizerConfig(word_threshold=0), backend=EchoBackend())
-        self.assertEqual(summarizer.summarize("actual request text"), "short useful summary")
+        summarizer = Summarizer(
+            SummarizerConfig(word_threshold=0), backend=EchoBackend()
+        )
+        self.assertEqual(
+            summarizer.summarize("actual request text"), "short useful summary"
+        )
 
     def test_thinking_block_is_stripped_from_summary(self):
         class ThinkingBackend:
             def generate(self, messages, config):
                 return "<think>\nI should summarize the request.\n</think>\nFinal summary only."
 
-        summarizer = Summarizer(SummarizerConfig(word_threshold=0), backend=ThinkingBackend())
-        self.assertEqual(summarizer.summarize("actual request text"), "Final summary only.")
+        summarizer = Summarizer(
+            SummarizerConfig(word_threshold=0), backend=ThinkingBackend()
+        )
+        self.assertEqual(
+            summarizer.summarize("actual request text"), "Final summary only."
+        )
 
     def test_thinking_only_output_falls_back_to_original_text(self):
         class ThinkingBackend:
             def generate(self, messages, config):
                 return "<think>\nNo final answer yet.\n</think>"
 
-        summarizer = Summarizer(SummarizerConfig(word_threshold=0), backend=ThinkingBackend())
-        self.assertEqual(summarizer.summarize("actual request text"), "actual request text")
-
+        summarizer = Summarizer(
+            SummarizerConfig(word_threshold=0), backend=ThinkingBackend()
+        )
+        self.assertEqual(
+            summarizer.summarize("actual request text"), "actual request text"
+        )
 
     def test_mlx_backend_uses_sampler_not_temperature_kwarg(self):
         calls = {}
@@ -78,7 +95,9 @@ class SummarizerTests(unittest.TestCase):
         def fake_generate(*args, **kwargs):
             calls.update(kwargs)
             if "temperature" in kwargs:
-                raise TypeError("generate_step() got an unexpected keyword argument 'temperature'")
+                raise TypeError(
+                    "generate_step() got an unexpected keyword argument 'temperature'"
+                )
             return "summary"
 
         def fake_make_sampler(**kwargs):
@@ -92,7 +111,10 @@ class SummarizerTests(unittest.TestCase):
         backend._generate = fake_generate
         backend._make_sampler = fake_make_sampler
 
-        result = backend.generate([{"role": "user", "content": "hello"}], SummarizerConfig(model="fake", temperature=0.2))
+        result = backend.generate(
+            [{"role": "user", "content": "hello"}],
+            SummarizerConfig(model="fake", temperature=0.2),
+        )
 
         self.assertEqual(result, "summary")
         self.assertNotIn("temperature", calls)
@@ -104,7 +126,9 @@ class SummarizerTests(unittest.TestCase):
             def generate(self, messages, config):
                 raise RuntimeError("boom")
 
-        summarizer = Summarizer(SummarizerConfig(word_threshold=0), backend=BrokenBackend())
+        summarizer = Summarizer(
+            SummarizerConfig(word_threshold=0), backend=BrokenBackend()
+        )
         with patch("tts_summarizer.summarizer.logger.exception"):
             self.assertEqual(summarizer.summarize("keep this"), "keep this")
 

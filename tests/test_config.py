@@ -24,7 +24,9 @@ class ConfigTests(unittest.TestCase):
             (home / ".config" / "tts-summarizer" / "config.toml").write_text(
                 '[tts.generate_kwargs]\nvoice = "UserVoice"\n', encoding="utf-8"
             )
-            (cwd / "config.toml").write_text('[tts.generate_kwargs]\nvoice = "CwdVoice"\n', encoding="utf-8")
+            (cwd / "config.toml").write_text(
+                '[tts.generate_kwargs]\nvoice = "CwdVoice"\n', encoding="utf-8"
+            )
             cfg = load_config(None, cwd=cwd, home=home)
         self.assertEqual(cfg.tts.generate_kwargs["voice"], "CwdVoice")
 
@@ -37,7 +39,9 @@ class ConfigTests(unittest.TestCase):
     def test_prompt_override(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "config.toml"
-            path.write_text('[summarizer]\nsystem_prompt = "Speak plainly."\n', encoding="utf-8")
+            path.write_text(
+                '[summarizer]\nsystem_prompt = "Speak plainly."\n', encoding="utf-8"
+            )
             cfg = load_config(str(path), cwd=Path(tmp), home=Path(tmp))
         self.assertEqual(cfg.summarizer.system_prompt, "Speak plainly.")
 

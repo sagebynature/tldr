@@ -1,7 +1,7 @@
 PYTHON ?= python
 CONFIG ?= config.toml
 
-.PHONY: build test typecheck check run
+.PHONY: build test lint format typecheck check run
 
 build:
 	uv build
@@ -9,10 +9,16 @@ build:
 test: typecheck
 	uv run $(PYTHON) -m unittest discover -s tests -v
 
-typecheck:
-	uvx ty check src tests
+lint:
+	uv run ruff check src tests --fix
 
-check: typecheck test build
+format:
+	uv run ruff format src tests
+
+typecheck:
+	uv run ty check src tests
+
+check: lint format typecheck test build
 
 run:
 	uv run $(PYTHON) -m tts_summarizer serve --config $(CONFIG)

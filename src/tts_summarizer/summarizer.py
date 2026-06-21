@@ -11,7 +11,9 @@ logger = logging.getLogger(__name__)
 
 
 class SummaryBackend(Protocol):
-    def generate(self, messages: list[dict[str, str]], config: SummarizerConfig) -> str: ...
+    def generate(
+        self, messages: list[dict[str, str]], config: SummarizerConfig
+    ) -> str: ...
 
 
 class MlxLmBackend:
@@ -44,7 +46,9 @@ class MlxLmBackend:
         model, tokenizer = self._load(config.model)
         logger.info("generating summary model=%s", config.model)
         try:
-            prompt = tokenizer.apply_chat_template(messages, add_generation_prompt=True, enable_thinking=False)
+            prompt = tokenizer.apply_chat_template(
+                messages, add_generation_prompt=True, enable_thinking=False
+            )
         except TypeError:
             prompt = tokenizer.apply_chat_template(messages, add_generation_prompt=True)
         generate = self._generate
@@ -103,7 +107,7 @@ def clean_summary(summary: str, original: str, config: SummarizerConfig) -> str:
         if cleaned == prompt_part:
             return original
         if cleaned.startswith(prompt_part):
-            cleaned = cleaned[len(prompt_part):].strip()
+            cleaned = cleaned[len(prompt_part) :].strip()
     return cleaned or original
 
 

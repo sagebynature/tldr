@@ -16,3 +16,4 @@ dist/
 audio/
 
 .serena/
+.config

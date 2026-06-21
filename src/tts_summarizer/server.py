@@ -32,8 +32,14 @@ class TtsService:
 
     def handle(self, request: SpeechRequest) -> dict[str, object]:
         token = self.sessions.begin(request)
-        logger.info("accepted speech request session=%s chars=%s", request.session_key(), len(request.text))
-        logger.info("incoming text session=%s text=%r", request.session_key(), request.text)
+        logger.info(
+            "accepted speech request session=%s chars=%s",
+            request.session_key(),
+            len(request.text),
+        )
+        logger.info(
+            "incoming text session=%s text=%r", request.session_key(), request.text
+        )
         self._jobs.put((request, token))
         return {"status": "accepted", "session_key": request.session_key()}
 
@@ -70,18 +76,17 @@ class TtsService:
                 len(text),
                 text != request.text,
             )
-            logger.info("summarized text session=%s text=%r", request.session_key(), text)
+            logger.info(
+                "summarized text session=%s text=%r", request.session_key(), text
+            )
             if token.cancelled():
-                logger.info("speech request cancelled before tts session=%s", request.session_key())
+                logger.info(
+                    "speech request cancelled before tts session=%s",
+                    request.session_key(),
+                )
                 return
             logger.info("generating speech session=%s", request.session_key())
-            chunks = self.speech.generate(text)
-            logger.info("generated speech chunks session=%s chunks=%s", request.session_key(), len(chunks))
-            if self.config.session.cross_session_policy == "queue":
-                with self._audio_lock:
-                    self.player.play(chunks, token=token)
-            else:
-                self.player.play(chunks, token=token)
+            self.speech.generate(text)
             logger.info("speech playback complete session=%s", request.session_key())
         except Exception:
             logger.exception("speech request failed session=%s", request.session_key())
