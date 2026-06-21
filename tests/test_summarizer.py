@@ -1,8 +1,14 @@
+import json
 import unittest
 from unittest.mock import patch
 
 from tts_summarizer.config import SummarizerConfig
-from tts_summarizer.summarizer import MlxLmBackend, Summarizer, count_words
+from tts_summarizer.summarizer import (
+    OpenAICompatibleBackend,
+    Summarizer,
+    count_words,
+    replace_urls,
+)
 
 
 class FakeBackend:
@@ -17,6 +23,12 @@ class FakeBackend:
 class SummarizerTests(unittest.TestCase):
     def test_count_words(self):
         self.assertEqual(count_words("one two\nthree"), 3)
+
+    def test_replace_urls_replaces_http_and_https(self):
+        self.assertEqual(
+            replace_urls("Read http://example.test/a https://example.test/b?x=1."),
+            "Read supplied URL supplied URL",
+        )
 
     def test_threshold_skips_model(self):
         backend = FakeBackend()
@@ -33,6 +45,19 @@ class SummarizerTests(unittest.TestCase):
         self.assertEqual(summarizer.summarize("long enough"), "short result")
         self.assertEqual(backend.prompt, "Limit 40: long enough")
 
+    def test_summarizer_sends_sanitized_text_to_backend(self):
+        backend = FakeBackend()
+        config = SummarizerConfig(
+            word_threshold=0,
+            user_prompt_template="Say {max_words}: {text}",
+        )
+        summarizer = Summarizer(config, backend=backend)
+
+        self.assertEqual(
+            summarizer.summarize("open https://example.test/path"), "short result"
+        )
+        self.assertEqual(backend.prompt, "Say 40: open supplied URL")
+
     def test_system_prompt_echo_falls_back_to_original_text(self):
         class EchoBackend:
             def generate(self, messages, config):
@@ -48,31 +73,27 @@ class SummarizerTests(unittest.TestCase):
     def test_system_prompt_prefix_is_stripped_from_summary(self):
         class EchoBackend:
             def generate(self, messages, config):
-                return f"{config.system_prompt}\n\nshort useful summary"
+                return f"{config.system_prompt}\n\nactual summary"
 
         summarizer = Summarizer(
             SummarizerConfig(word_threshold=0), backend=EchoBackend()
         )
-        self.assertEqual(
-            summarizer.summarize("actual request text"), "short useful summary"
-        )
+        self.assertEqual(summarizer.summarize("actual request text"), "actual summary")
 
     def test_thinking_block_is_stripped_from_summary(self):
         class ThinkingBackend:
             def generate(self, messages, config):
-                return "<think>\nI should summarize the request.\n</think>\nFinal summary only."
+                return "<think>private reasoning</think>spoken result"
 
         summarizer = Summarizer(
             SummarizerConfig(word_threshold=0), backend=ThinkingBackend()
         )
-        self.assertEqual(
-            summarizer.summarize("actual request text"), "Final summary only."
-        )
+        self.assertEqual(summarizer.summarize("actual request text"), "spoken result")
 
     def test_thinking_only_output_falls_back_to_original_text(self):
         class ThinkingBackend:
             def generate(self, messages, config):
-                return "<think>\nNo final answer yet.\n</think>"
+                return "<think>unfinished reasoning"
 
         summarizer = Summarizer(
             SummarizerConfig(word_threshold=0), backend=ThinkingBackend()
@@ -81,45 +102,75 @@ class SummarizerTests(unittest.TestCase):
             summarizer.summarize("actual request text"), "actual request text"
         )
 
-    def test_mlx_backend_uses_sampler_not_temperature_kwarg(self):
-        calls = {}
+    def test_openai_backend_posts_chat_completion_without_auth(self):
+        calls = []
 
-        class Tokenizer:
-            def __init__(self):
-                self.kwargs = {}
+        class Response:
+            def __enter__(self):
+                return self
 
-            def apply_chat_template(self, messages, **kwargs):
-                self.kwargs = kwargs
-                return "prompt"
+            def __exit__(self, exc_type, exc, tb):
+                return False
 
-        def fake_generate(*args, **kwargs):
-            calls.update(kwargs)
-            if "temperature" in kwargs:
-                raise TypeError(
-                    "generate_step() got an unexpected keyword argument 'temperature'"
-                )
-            return "summary"
+            def read(self):
+                return b'{"choices":[{"message":{"content":"short summary"}}]}'
 
-        def fake_make_sampler(**kwargs):
-            return ("sampler", kwargs)
+        def fake_urlopen(request, timeout):
+            calls.append((request, timeout))
+            return Response()
 
-        tokenizer = Tokenizer()
-        backend = MlxLmBackend()
-        backend._model = object()
-        backend._tokenizer = tokenizer
-        backend._model_name = "fake"
-        backend._generate = fake_generate
-        backend._make_sampler = fake_make_sampler
-
+        backend = OpenAICompatibleBackend(urlopen=fake_urlopen)
         result = backend.generate(
             [{"role": "user", "content": "hello"}],
-            SummarizerConfig(model="fake", temperature=0.2),
+            SummarizerConfig(
+                base_url="http://localhost:1234/v1/",
+                api_key="",
+                model="local-model",
+                temperature=0.3,
+                max_tokens=50,
+            ),
         )
 
-        self.assertEqual(result, "summary")
-        self.assertNotIn("temperature", calls)
-        self.assertEqual(calls["sampler"], ("sampler", {"temp": 0.2}))
-        self.assertIs(tokenizer.kwargs["enable_thinking"], False)
+        self.assertEqual(result, "short summary")
+        request, timeout = calls[0]
+        self.assertEqual(request.full_url, "http://localhost:1234/v1/chat/completions")
+        self.assertEqual(request.get_method(), "POST")
+        self.assertNotIn("Authorization", request.headers)
+        self.assertEqual(timeout, 30)
+        self.assertEqual(
+            json.loads(request.data.decode("utf-8")),
+            {
+                "model": "local-model",
+                "messages": [{"role": "user", "content": "hello"}],
+                "temperature": 0.3,
+                "max_tokens": 50,
+            },
+        )
+
+    def test_openai_backend_posts_auth_when_configured(self):
+        calls = []
+
+        class Response:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def read(self):
+                return b'{"choices":[{"message":{"content":"short summary"}}]}'
+
+        def fake_urlopen(request, timeout):
+            calls.append(request)
+            return Response()
+
+        backend = OpenAICompatibleBackend(urlopen=fake_urlopen)
+        backend.generate(
+            [{"role": "user", "content": "hello"}],
+            SummarizerConfig(api_key="test-token"),
+        )
+
+        self.assertEqual(calls[0].headers["Authorization"], "Bearer test-token")
 
     def test_backend_failure_returns_original_text(self):
         class BrokenBackend:

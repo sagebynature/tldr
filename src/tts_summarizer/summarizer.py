@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from typing import Any, Callable, Protocol, cast
+from typing import Callable, Protocol
+from urllib.request import Request, urlopen
+import json
 import logging
 import re
 
@@ -8,6 +10,7 @@ from .config import SummarizerConfig
 
 
 logger = logging.getLogger(__name__)
+URL_PATTERN = re.compile(r"https?://[^\s<>)\]}]+")
 
 
 class SummaryBackend(Protocol):
@@ -16,75 +19,58 @@ class SummaryBackend(Protocol):
     ) -> str: ...
 
 
-class MlxLmBackend:
-    def __init__(self):
-        self._model = None
-        self._tokenizer = None
-        self._model_name = ""
-        self._generate: Callable[..., str] | None = None
-        self._make_sampler: Callable[..., object] | None = None
+def replace_urls(text: str) -> str:
+    return URL_PATTERN.sub("supplied URL", text)
 
-    def _load(self, model_name: str):
-        if self._model is not None and self._model_name == model_name:
-            return self._model, self._tokenizer
-        logger.info("loading summarizer model=%s", model_name)
-        from mlx_lm import generate, load
-        from mlx_lm.sample_utils import make_sampler
 
-        loaded = cast(Any, load)(model_name)
-        model = loaded[0]
-        tokenizer = loaded[1]
-        self._generate = generate
-        self._make_sampler = make_sampler
-        self._model = model
-        self._tokenizer = tokenizer
-        self._model_name = model_name
-        logger.info("summarizer model ready model=%s", model_name)
-        return model, tokenizer
+class OpenAICompatibleBackend:
+    def __init__(self, urlopen: Callable[..., object] = urlopen, timeout: float = 30):
+        self.urlopen = urlopen
+        self.timeout = timeout
 
     def generate(self, messages: list[dict[str, str]], config: SummarizerConfig) -> str:
-        model, tokenizer = self._load(config.model)
-        logger.info("generating summary model=%s", config.model)
-        try:
-            prompt = tokenizer.apply_chat_template(
-                messages, add_generation_prompt=True, enable_thinking=False
-            )
-        except TypeError:
-            prompt = tokenizer.apply_chat_template(messages, add_generation_prompt=True)
-        generate = self._generate
-        make_sampler = self._make_sampler
-        if generate is None:
-            raise RuntimeError("mlx-lm generator was not loaded")
-        if make_sampler is None:
-            raise RuntimeError("mlx-lm sampler factory was not loaded")
-        return generate(
-            model,
-            tokenizer,
-            prompt=prompt,
-            max_tokens=config.max_tokens,
-            sampler=make_sampler(temp=config.temperature),
-            verbose=False,
-        ).strip()
+        url = f"{config.base_url.rstrip('/')}/chat/completions"
+        body = json.dumps(
+            {
+                "model": config.model,
+                "messages": messages,
+                "temperature": config.temperature,
+                "max_tokens": config.max_tokens,
+            }
+        ).encode("utf-8")
+        headers = {"Content-Type": "application/json"}
+        if config.api_key:
+            headers["Authorization"] = f"Bearer {config.api_key}"
+        request = Request(url, data=body, headers=headers, method="POST")
+        with self.urlopen(request, timeout=self.timeout) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+        return str(payload["choices"][0]["message"]["content"])
 
 
 class Summarizer:
     def __init__(self, config: SummarizerConfig, backend: SummaryBackend | None = None):
         self.config = config
-        self.backend = backend or MlxLmBackend()
+        self.backend = backend or OpenAICompatibleBackend()
 
     def summarize(self, text: str) -> str:
         if not self.config.enabled:
             return text
         if count_words(text) <= self.config.word_threshold:
             return text
-        logger.info("summarizing text chars=%s words=%s prompt=%s", len(text), count_words(text), self.config.system_prompt)
+        logger.info(
+            "summarizing text chars=%s words=%s prompt=%s",
+            len(text),
+            count_words(text),
+            self.config.system_prompt,
+        )
+        sanitized = replace_urls(text)
         messages = [
             {"role": "system", "content": self.config.system_prompt},
             {
                 "role": "user",
                 "content": self.config.user_prompt_template.format(
                     max_words=self.config.max_words,
-                    text=text,
+                    text=sanitized,
                 ),
             },
         ]
