@@ -55,7 +55,7 @@ class SummarizerConfig:
 class TtsConfig:
     model: str = "mlx-community/Qwen3-TTS-12Hz-1.7B-Base-8bit"
     voice: str = "Chelsie"
-    lang_code: str = "English"
+    language: str = "English"
     speed: float = 1.6
     ref_audio: str = ""
     ref_text: str = ""
@@ -71,12 +71,18 @@ class AudioConfig:
 
 
 @dataclass(frozen=True)
+class LoggingConfig:
+    config_file: str = ""
+
+
+@dataclass(frozen=True)
 class Config:
     server: ServerConfig = field(default_factory=ServerConfig)
     session: SessionConfig = field(default_factory=SessionConfig)
     summarizer: SummarizerConfig = field(default_factory=SummarizerConfig)
     tts: TtsConfig = field(default_factory=TtsConfig)
     audio: AudioConfig = field(default_factory=AudioConfig)
+    logging: LoggingConfig = field(default_factory=LoggingConfig)
     source: Path | None = None
 
 
@@ -96,7 +102,7 @@ def _merge_dataclass(instance: Any, values: dict[str, Any]) -> Any:
 
 def _apply(raw: dict[str, Any], source: Path | None) -> Config:
     cfg = Config(source=source)
-    allowed = {"server", "session", "summarizer", "tts", "audio"}
+    allowed = {"server", "session", "summarizer", "tts", "audio", "logging"}
     unknown_sections = sorted(set(raw) - allowed)
     if unknown_sections:
         raise ConfigError(f"unknown config sections: {', '.join(unknown_sections)}")
@@ -106,6 +112,7 @@ def _apply(raw: dict[str, Any], source: Path | None) -> Config:
         summarizer=_merge_dataclass(cfg.summarizer, raw.get("summarizer", {})),
         tts=_merge_dataclass(cfg.tts, raw.get("tts", {})),
         audio=_merge_dataclass(cfg.audio, raw.get("audio", {})),
+        logging=_merge_dataclass(cfg.logging, raw.get("logging", {})),
         source=source,
     )
 

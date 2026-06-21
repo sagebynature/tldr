@@ -33,16 +33,16 @@ Preserve the practical outcome and next action.
 """
 
 [tts]
-model = "mlx-community/Qwen3-TTS-12Hz-1.7B-Base-8bit"
-voice = "Chelsie"
-lang_code = "English"
-speed = 1.6
+model = "mlx-community/Qwen3-TTS-12Hz-1.7B-CustomVoice-8bit"
+voice = "Aiden"
+language = "English"
+speed = 2.0
 ref_audio = ""
 ref_text = ""
 stream = true
 sample_rate = 24000
 
 [audio]
-backend = "auto" # auto | afplay | sounddevice | file
+backend = "auto"                             # auto | afplay | sounddevice | file
 output_dir = "~/.cache/tts-summarizer/audio"
 save = false

@@ -5,6 +5,7 @@ import sys
 
 from .client import daemon_base_url, get_json, post_json
 from .config import ConfigError, load_config
+from .logging_setup import setup_logging
 from .request import RequestError, SpeechRequest
 from .server import run_server
 
@@ -42,6 +43,7 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         config = load_config(getattr(args, "config", None))
+        setup_logging(config)
     except ConfigError as exc:
         print(f"tts-summarizer config error: {exc}", file=sys.stderr)
         return 2 if args.command == "config-check" else 0

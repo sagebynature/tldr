@@ -18,7 +18,7 @@ uv sync --dev
 
 ```bash
 make build      # uv build
-make test       # uv run --no-sync python -m unittest discover -s tests -v
+make test       # uv run python -m unittest discover -s tests -v
 make typecheck  # uvx ty check src tests
 make check      # typecheck, test, then build
 make run        # uv run python -m tts_summarizer serve --config config.example.toml
@@ -62,6 +62,17 @@ uv run tts-summarizer stop --config config.example.toml
 4. built-in defaults
 
 See `config.example.toml` for all model, prompt, session, server, and audio settings.
+
+## Logging
+
+The package ships `src/tts_summarizer/logging.conf`, using `colorlog.ColoredFormatter` like `korean-name-generator`.
+
+Use a custom logging config from TOML:
+
+```toml
+[logging]
+config_file = "/path/to/logging.conf"
+```
 
 ## Versioning and releases
 

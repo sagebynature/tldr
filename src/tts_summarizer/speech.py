@@ -34,7 +34,7 @@ class MlxAudioBackend:
         model = self._load(config.model)
         kwargs = {
             "voice": config.voice or None,
-            "lang_code": config.lang_code or None,
+            "language": config.language or None,
             "speed": config.speed,
             "ref_audio": config.ref_audio or None,
             "ref_text": config.ref_text or None,

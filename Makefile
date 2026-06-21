@@ -6,8 +6,8 @@ CONFIG ?= config.example.toml
 build:
 	uv build
 
-test:
-	uv run --no-sync $(PYTHON) -m unittest discover -s tests -v
+test: typecheck
+	uv run $(PYTHON) -m unittest discover -s tests -v
 
 typecheck:
 	uvx ty check src tests

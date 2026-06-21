@@ -12,6 +12,7 @@ authors = [{ name = "sagebynature" }]
 dependencies = [
   "mlx-lm; platform_system == 'Darwin' and platform_machine == 'arm64'",
   "mlx-audio; platform_system == 'Darwin' and platform_machine == 'arm64'",
+  "colorlog>=6.10.1",
   "numpy",
 ]
 
@@ -25,6 +26,7 @@ tts-summarizer = "tts_summarizer.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/tts_summarizer"]
+force-include = { "src/tts_summarizer/logging.conf" = "tts_summarizer/logging.conf" }
 
 [tool.hatch.build.targets.sdist]
 include = ["src", "tests", "README.md", "CHANGELOG.md", "config.example.toml", "Makefile"]
