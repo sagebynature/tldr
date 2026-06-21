@@ -31,7 +31,7 @@ class AudioPlayer:
                 return
             path = output_dir / f"speech-{time.time_ns()}.wav"
             write_wav(path, chunk)
-            if self.config.backend in {"auto", "afplay"} and not self.config.save:
+            if self.config.backend in {"auto", "afplay", "ffplay"} and not self.config.save:
                 proc = subprocess.Popen(["/usr/bin/afplay", str(path)])
                 while proc.poll() is None:
                     if token is not None and token.cancelled():

@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from tts_summarizer.audio import AudioPlayer
@@ -60,6 +61,24 @@ class SpeechAudioTests(unittest.TestCase):
             player.play([AudioChunk(samples=[0.0, 0.5, -0.5], sample_rate=8000)])
             files = list(Path(tmp).glob("*.wav"))
         self.assertEqual(len(files), 1)
+
+    def test_audio_player_ffplay_backend_uses_playback_path(self):
+        calls = []
+
+        class FinishedProcess:
+            def poll(self):
+                return 0
+
+        def fake_popen(args):
+            calls.append(args)
+            return FinishedProcess()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            player = AudioPlayer(AudioConfig(backend="ffplay", output_dir=tmp, save=False))
+            with patch("tts_summarizer.audio.subprocess.Popen", fake_popen):
+                player.play([AudioChunk(samples=[0.0], sample_rate=8000)])
+
+        self.assertEqual(len(calls), 1)
 
 
 if __name__ == "__main__":
