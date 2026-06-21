@@ -86,9 +86,11 @@ class Summarizer:
 
 def clean_summary(summary: str, original: str, config: SummarizerConfig) -> str:
     cleaned = strip_thinking(summary).strip()
+    sanitized = replace_urls(original)
     for prompt_part in (
         config.system_prompt,
         config.user_prompt_template.format(max_words=config.max_words, text=original),
+        config.user_prompt_template.format(max_words=config.max_words, text=sanitized),
     ):
         prompt_part = prompt_part.strip()
         if cleaned == prompt_part:

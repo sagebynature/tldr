@@ -58,6 +58,37 @@ class SummarizerTests(unittest.TestCase):
         )
         self.assertEqual(backend.prompt, "Say 40: open supplied URL")
 
+    def test_sanitized_user_prompt_echo_is_stripped_from_summary(self):
+        class EchoBackend:
+            def generate(self, messages, config):
+                return f"{messages[-1]['content']}\n\nactual summary"
+
+        config = SummarizerConfig(
+            word_threshold=0,
+            user_prompt_template="Say {max_words}: {text}",
+        )
+        summarizer = Summarizer(config, backend=EchoBackend())
+
+        self.assertEqual(
+            summarizer.summarize("open https://example.test/path"), "actual summary"
+        )
+
+    def test_sanitized_user_prompt_echo_only_falls_back_to_original_text(self):
+        class EchoBackend:
+            def generate(self, messages, config):
+                return messages[-1]["content"]
+
+        config = SummarizerConfig(
+            word_threshold=0,
+            user_prompt_template="Say {max_words}: {text}",
+        )
+        summarizer = Summarizer(config, backend=EchoBackend())
+
+        self.assertEqual(
+            summarizer.summarize("open https://example.test/path"),
+            "open https://example.test/path",
+        )
+
     def test_system_prompt_echo_falls_back_to_original_text(self):
         class EchoBackend:
             def generate(self, messages, config):
