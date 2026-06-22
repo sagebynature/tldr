@@ -1870,7 +1870,7 @@ wheels = [
 [[package]]
 name = "tts-summarizer"
 version = "0.0.1"
-source = { editable = "." }
+source = { virtual = "." }
 dependencies = [
     { name = "colorlog" },
     { name = "fastapi" },

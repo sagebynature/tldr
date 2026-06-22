@@ -1,8 +1,10 @@
 services:
   tts-summarizer:
     build: .
-    command: ["tts-summarizer", "serve", "--config", "/config/config.toml"]
+    command: ["python", "-m", "tts_summarizer", "serve", "--config", "/config/config.toml"]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "9200:9200"
     volumes:
-      - ./config.toml:/config/config.toml:ro
+      - ${TTS_SUMMARIZER_CONFIG:-./config.docker.toml}:/config/config.toml:ro

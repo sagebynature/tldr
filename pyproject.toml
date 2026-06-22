@@ -1,7 +1,3 @@
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
 [project]
 name = "tts-summarizer"
 version = "0.0.1"
@@ -20,22 +16,6 @@ dev = ["ty==0.0.23", "ruff>=0.5", "httpx"]
 
 [project.scripts]
 tts-summarizer = "tts_summarizer.cli:main"
-
-[tool.hatch.build.targets.wheel]
-packages = ["src/tts_summarizer"]
-force-include = { "config.remote.example.toml" = "tts_summarizer/config.remote.example.toml", "config.apple-local.example.toml" = "tts_summarizer/config.apple-local.example.toml", "src/tts_summarizer/logging.conf" = "tts_summarizer/logging.conf", "hooks/codex/codex_tts.py" = "tts_summarizer/hooks/codex_tts.py", "hooks/claude/claude_tts.py" = "tts_summarizer/hooks/claude_tts.py", "hooks/omp/tts.ts" = "tts_summarizer/hooks/tts.ts" }
-
-[tool.hatch.build.targets.sdist]
-include = [
-  "src",
-  "hooks",
-  "tests",
-  "README.md",
-  "CHANGELOG.md",
-  "Makefile",
-  "config.remote.example.toml",
-  "config.apple-local.example.toml",
-]
 
 [tool.ty.environment]
 root = ["src"]

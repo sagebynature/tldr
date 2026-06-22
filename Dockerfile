@@ -1,14 +1,15 @@
 FROM python:3.12-slim
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 WORKDIR /app
 
-COPY pyproject.toml README.md ./
+COPY pyproject.toml uv.lock README.md ./
 COPY src ./src
-COPY hooks ./hooks
-COPY config.remote.example.toml config.apple-local.example.toml ./
 
-RUN pip install --no-cache-dir .
+ENV PATH="/app/.venv/bin:$PATH" PYTHONPATH="/app/src"
+
+RUN uv sync --locked --no-dev
 
 EXPOSE 9200
 
-CMD ["tts-summarizer", "serve", "--config", "/config/config.toml"]
+CMD ["python", "-m", "tts_summarizer", "serve", "--config", "/config/config.toml"]

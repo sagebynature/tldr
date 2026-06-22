@@ -38,13 +38,16 @@ The remote profile expects your summarizer and TTS servers to expose OpenAI-comp
 ```bash
 git clone https://github.com/sagebynature/tts-summarizer
 cd tts-summarizer
-cp config.remote.example.toml config.toml
-# Edit config.toml so remote model base_url values are reachable from the container.
-# If the model servers run on the Docker host, use http://host.docker.internal:9000/v1.
 docker compose up
 ```
 
-Docker runs the HTTP daemon only. summarizer TTS profiles in `config.toml` must point at remote model backends reachable from the container.
+Docker runs the HTTP daemon only. By default Compose mounts `config.docker.example.toml`, which binds the daemon to `0.0.0.0:9200` and points model backends at `http://host.docker.internal:9000/v1` so containers can reach model servers running on the Docker host.
+
+Use another Docker config file when your model endpoints live elsewhere:
+
+```bash
+TTS_SUMMARIZER_CONFIG=./config.toml docker compose up
+```
 
 ## Config lookup profiles
 

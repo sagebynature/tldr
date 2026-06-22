@@ -11,7 +11,7 @@ default_profile = "remote-qwen25"
 
 [summarizer.profiles.remote-qwen25]
 enabled = true
-base_url = "http://127.0.0.1:9000/v1"
+base_url = "http://host.docker.internal:9000/v1"
 api_key = "omlx"
 model = "mlx-community/Qwen2.5-1.5B-Instruct-4bit"
 word_threshold = 0
@@ -19,14 +19,18 @@ max_words = 40
 temperature = 0.1
 max_tokens = 180
 system_prompt = """
-You summarize assistant responses text-to-speech.
-Return only final spoken summary.
-Do not include reasoning, analysis, planning, explanations, prefaces, markdown, code fences, file paths, URLs, bullets, or formatting.
-If content question, preserve question instead answering it.
+You rewrite assistant responses text-to-speech.
+Goal: produce shorter version original response, not third-person summary.
+Preserve original speaker, tone, intent, stance, direct address.
+Keep first person first person, second person second person.
+Do not say "the assistant", "the response", "they", describe said.
+Return only rewritten spoken text.
+No markdown, bullets, code fences, URLs, file paths, prefaces, explanations.
+If original asks question, preserve question rather answering it.
 """
 user_prompt_template = """
-Write one complete spoken summary in {max_words} words fewer.
-Stop summary.
+Rewrite response into {max_words} words fewer spoken playback.
+Keep same voice intent, just shorter.
 
 {text}
 """
@@ -39,7 +43,7 @@ default_profile = "remote-kokoro"
 
 [tts.profiles.remote-qwen]
 backend = "remote"
-base_url = "http://127.0.0.1:9000/v1"
+base_url = "http://host.docker.internal:9000/v1"
 api_key = "omlx"
 model = "mlx-community/Qwen3-TTS-12Hz-1.7B-CustomVoice-8bit"
 stream = true
@@ -52,7 +56,7 @@ streaming_interval = 0.32
 
 [tts.profiles.remote-kokoro]
 backend = "remote"
-base_url = "http://127.0.0.1:9000/v1"
+base_url = "http://host.docker.internal:9000/v1"
 api_key = "omlx"
 model = "mlx-community/Kokoro-82M-bf16"
 stream = true
