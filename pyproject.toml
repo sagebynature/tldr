@@ -27,7 +27,7 @@ tts-summarizer = "tts_summarizer.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/tts_summarizer"]
-force-include = { "src/tts_summarizer/logging.conf" = "tts_summarizer/logging.conf", "hooks/codex/codex_tts.py" = "tts_summarizer/hooks/codex_tts.py" }
+force-include = { "src/tts_summarizer/logging.conf" = "tts_summarizer/logging.conf", "hooks/codex/codex_tts.py" = "tts_summarizer/hooks/codex_tts.py", "config.remote.example.toml" = "tts_summarizer/config.remote.example.toml", "config.apple-local.example.toml" = "tts_summarizer/config.apple-local.example.toml" }
 
 [tool.hatch.build.targets.sdist]
 include = [
@@ -37,6 +37,8 @@ include = [
   "README.md",
   "CHANGELOG.md",
   "Makefile",
+    "config.remote.example.toml",
+    "config.apple-local.example.toml",
 ]
 
 [tool.ty.environment]

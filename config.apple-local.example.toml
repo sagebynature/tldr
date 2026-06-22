@@ -1,0 +1,84 @@
+[server]
+host = "127.0.0.1"
+port = 9200
+state_dir = "~/.cache/tts-summarizer"
+auto_start = true
+startup_timeout_ms = 3000
+request_timeout_ms = 5000
+
+[summarizer]
+default_profile = "qwen25"
+
+[summarizer.profiles.qwen25]
+enabled = true
+base_url = "http://127.0.0.1:9000/v1"
+api_key = "omlx"
+model = "mlx-community/Qwen2.5-1.5B-Instruct-4bit"
+word_threshold = 0
+max_words = 40
+temperature = 0.1
+max_tokens = 180
+system_prompt = """
+You summarize assistant responses text-to-speech.
+Return only final spoken summary.
+Do not include reasoning, analysis, planning, explanations, prefaces, markdown, code fences, file paths, URLs, bullets, or formatting.
+If content question, preserve question instead answering it.
+"""
+user_prompt_template = """
+Write one complete spoken summary in {max_words} words fewer.
+Stop summary.
+
+{text}
+"""
+
+[summarizer.profiles.qwen25.extra_body.chat_template_kwargs]
+enable_thinking = false
+
+[tts]
+default_profile = "kokoro"
+
+[tts.profiles.qwen]
+model = "mlx-community/Qwen3-TTS-12Hz-1.7B-CustomVoice-8bit"
+stream = true
+sample_rate = 24000
+
+[tts.profiles.qwen.generate_kwargs]
+voice = "Aiden"
+lang_code = "english"
+streaming_interval = 0.32
+
+[tts.profiles.remote-qwen]
+backend = "remote"
+base_url = "http://127.0.0.1:9000/v1"
+api_key = "omlx"
+model = "mlx-community/Qwen3-TTS-12Hz-1.7B-CustomVoice-8bit"
+stream = true
+sample_rate = 24000
+
+[tts.profiles.remote-qwen.generate_kwargs]
+voice = "Aiden"
+lang_code = "english"
+streaming_interval = 0.32
+
+[tts.profiles.kokoro]
+model = "mlx-community/Kokoro-82M-bf16"
+stream = true
+sample_rate = 24000
+
+[tts.profiles.kokoro.generate_kwargs]
+voice = "af_alloy"
+lang_code = "a"
+speed = 1.3
+
+[tts.profiles.remote-kokoro]
+backend = "remote"
+base_url = "http://127.0.0.1:9000/v1"
+api_key = "omlx"
+model = "mlx-community/Kokoro-82M-bf16"
+stream = true
+sample_rate = 24000
+
+[tts.profiles.remote-kokoro.generate_kwargs]
+voice = "af_heart"
+lang_code = "a"
+response_format = "wav"
