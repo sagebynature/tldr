@@ -329,7 +329,6 @@ class ClaudeHookTests(unittest.TestCase):
             )
 
 
-
 class HermesHookTests(unittest.TestCase):
     def _hook_env(self, tmp: Path) -> dict[str, str]:
         return {
@@ -399,7 +398,12 @@ class HermesHookTests(unittest.TestCase):
 
         self.assertEqual(
             call["argv"],
-            ["speak", "--session_id", "hermes:fallback-session", "Fallback Hermes text."],
+            [
+                "speak",
+                "--session_id",
+                "hermes:fallback-session",
+                "Fallback Hermes text.",
+            ],
         )
 
     def test_hermes_hook_ignores_other_events(self):
@@ -652,7 +656,6 @@ class HookInstallerTests(unittest.TestCase):
                 call["argv"],
                 ["speak", "--session_id", "claude-session-789", "Claude runner text."],
             )
-
 
     def test_cli_install_hermes_hook_creates_idempotent_shell_hook_entry(self):
         with tempfile.TemporaryDirectory() as tmp_name:
