@@ -27,7 +27,7 @@ tts-summarizer = "tts_summarizer.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/tts_summarizer"]
-force-include = { "src/tts_summarizer/logging.conf" = "tts_summarizer/logging.conf", "hooks/codex/codex_tts.py" = "tts_summarizer/hooks/codex_tts.py" }
+force-include = { "src/tts_summarizer/logging.conf" = "tts_summarizer/logging.conf", "hooks/codex/codex_tts.py" = "tts_summarizer/hooks/codex_tts.py", "hooks/claude/claude_tts.py" = "tts_summarizer/hooks/claude_tts.py" }
 
 [tool.hatch.build.targets.sdist]
 include = [
