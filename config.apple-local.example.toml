@@ -61,6 +61,7 @@ lang_code = "english"
 streaming_interval = 0.32
 
 [tts.profiles.kokoro]
+backend = "mlx"
 model = "mlx-community/Kokoro-82M-bf16"
 stream = true
 sample_rate = 24000

@@ -150,6 +150,7 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(cfg.summarizer.default_profile, "qwen25")
         self.assertEqual(cfg.tts.default_profile, "kokoro")
         self.assertEqual(cfg.tts.profiles["kokoro"].backend, "mlx")
+        self.assertEqual(cfg.tts.profiles["kokoro"].model, "mlx-community/Kokoro-82M-bf16")
         self.assertEqual(cfg.tts.profiles["remote-kokoro"].backend, "remote")
 
     def test_cwd_config_beats_user_config(self):
