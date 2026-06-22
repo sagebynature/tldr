@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from collections.abc import Iterable
+from importlib import import_module
 import json
 import logging
 from typing import Any, Protocol, cast
@@ -34,7 +35,7 @@ class SpeechBackend(Protocol):
 
 def _patch_kokoro_sinegen() -> None:
     try:
-        from mlx_audio.tts.models.kokoro import istftnet
+        istftnet = import_module("mlx_audio.tts.models.kokoro.istftnet")
     except ImportError:
         return
 
@@ -75,9 +76,9 @@ class MlxAudioBackend:
         if "kokoro" in model_name.lower():
             # ponytail: MLX-Audio 0.4.4 Kokoro can emit sine/noise lengths off by one frame.
             _patch_kokoro_sinegen()
-        from mlx_audio.tts.utils import load_model
+        load_model = import_module("mlx_audio.tts.utils").load_model
 
-        return cast(Any, load_model)(model_name)
+        return load_model(model_name)
 
     def _load(self, model_name: str):
         if model_name in self._models:

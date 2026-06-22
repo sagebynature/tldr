@@ -1,4 +1,5 @@
 from collections.abc import Iterable
+from importlib import import_module
 import unittest
 import json
 from typing import cast
@@ -282,8 +283,8 @@ class SpeechAudioTests(unittest.TestCase):
 
     def test_kokoro_sinegen_patch_aligns_noise_length_mismatch(self):
         try:
-            import mlx.core as mx
-            from mlx_audio.tts.models.kokoro.istftnet import SineGen
+            mx = import_module("mlx.core")
+            SineGen = import_module("mlx_audio.tts.models.kokoro.istftnet").SineGen
         except ImportError:
             self.skipTest("mlx-audio Kokoro not installed")
 
