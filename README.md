@@ -148,20 +148,3 @@ Use custom logging config TOML:
 [logging]
 config_file = "/path/to/logging.conf"
 ```
-
-## Versioning releases
-
-Version is stored in `pyproject.toml` at `project.version`.
-
-Releases use Python Semantic Release Conventional Commits:
-
-- `fix:` bumps patch.
-- `feat:` bumps minor.
-- breaking changes bump major.
-
-On pushes to `main`, `.github/workflows/release.yml` runs `make check`, creates a GitHub release/tag when semantic-release finds releasable commits, builds `uv build`, and publishes to PyPI through Trusted Publishing.
-
-Required GitHub setup:
-
-- `SEMANTIC_RELEASE_TOKEN` secret with permission to push release commits/tags.
-- PyPI Trusted Publisher configured for this repository and the `pypi` environment.
