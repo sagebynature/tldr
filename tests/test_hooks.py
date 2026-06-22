@@ -690,7 +690,6 @@ class HookInstallerTests(unittest.TestCase):
             self.assertIn("timeout: 5\n", config)
             self.assertEqual(config.count(command), 1)
 
-
     def test_cli_install_hermes_hook_inserts_entry_inside_existing_hooks_block(self):
         with tempfile.TemporaryDirectory() as tmp_name:
             home = Path(tmp_name)
@@ -698,10 +697,7 @@ class HookInstallerTests(unittest.TestCase):
             config_yaml = hermes_dir / "config.yaml"
             hermes_dir.mkdir()
             config_yaml.write_text(
-                'hooks:\n'
-                '  pre_llm_call:\n'
-                '    - command: "existing"\n'
-                'theme: dark\n',
+                'hooks:\n  pre_llm_call:\n    - command: "existing"\ntheme: dark\n',
                 encoding="utf-8",
             )
             old_home, old_path = with_home_and_path(
