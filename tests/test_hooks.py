@@ -14,6 +14,7 @@ from tts_summarizer import cli
 ROOT = Path(__file__).resolve().parents[1]
 CODEX_HOOK = ROOT / "hooks" / "codex" / "codex_tts.py"
 CLAUDE_HOOK = ROOT / "hooks" / "claude" / "claude_tts.py"
+HERMES_HOOK = ROOT / "hooks" / "hermes" / "hermes_tts.py"
 
 
 def read_json_when_ready(path: Path, timeout: float = 3) -> dict[str, object]:
@@ -328,6 +329,51 @@ class ClaudeHookTests(unittest.TestCase):
             )
 
 
+
+class HermesHookTests(unittest.TestCase):
+    def _hook_env(self, tmp: Path) -> dict[str, str]:
+        return {
+            **os.environ,
+            "PATH": f"{tmp / 'bin'}{os.pathsep}{os.environ['PATH']}",
+        }
+
+    def _run_hermes_hook(
+        self, tmp: Path, payload: dict[str, object], delay: float = 0
+    ) -> tuple[dict[str, object], subprocess.CompletedProcess[str]]:
+        capture = stub_tts(tmp, delay=delay)
+        result = subprocess.run(
+            [str(HERMES_HOOK)],
+            input=json.dumps(payload),
+            text=True,
+            capture_output=True,
+            check=True,
+            env=self._hook_env(tmp),
+            cwd=ROOT,
+        )
+        return read_json_when_ready(capture), result
+
+    def test_hermes_hook_speaks_assistant_response_with_session_id(self):
+        with tempfile.TemporaryDirectory() as tmp_name:
+            call, result = self._run_hermes_hook(
+                Path(tmp_name),
+                {
+                    "hook_event_name": "post_llm_call",
+                    "session_id": "hermes-session-123",
+                    "extra": {"assistant_response": "Implemented Hermes hook."},
+                },
+            )
+
+        self.assertEqual(result.stdout, "{}\n")
+        self.assertEqual(
+            call["argv"],
+            [
+                "speak",
+                "--session_id",
+                "hermes:hermes-session-123",
+                "Implemented Hermes hook.",
+            ],
+        )
+        self.assertEqual(call["stdin"], "")
 class HookInstallerTests(unittest.TestCase):
     def test_cli_install_codex_hook_creates_idempotent_python_stop_entry(self):
         with tempfile.TemporaryDirectory() as tmp_name:
