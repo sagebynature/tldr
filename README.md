@@ -59,6 +59,27 @@ curl -sS \
 
 Use `"summarize": false` to send text directly to TTS.
 
+## Remote TTS backend
+
+TTS profiles can call an OpenAI/MLX-Audio-compatible server instead loading `mlx_audio` in process:
+
+```toml
+[tts.profiles.remote-kokoro]
+backend = "remote"
+base_url = "http://127.0.0.1:9100/v1"
+api_key = "omlx"
+model = "mlx-community/Kokoro-82M-bf16"
+stream = true
+sample_rate = 24000
+
+[tts.profiles.remote-kokoro.generate_kwargs]
+voice = "af_heart"
+lang_code = "a"
+response_format = "wav"
+```
+
+The daemon posts to `{base_url}/audio/speech` and streams the returned WAV bytes unchanged. Set `[tts] default_profile = "remote-kokoro"` to use it by default.
+
 ## Check and stop
 
 ```bash
