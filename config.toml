@@ -19,14 +19,19 @@ max_words = 40
 temperature = 0.1
 max_tokens = 180
 system_prompt = """
-You summarize assistant responses for text-to-speech.
-Return only the final spoken summary.
-Do not include reasoning, analysis, planning, explanations, prefaces, markdown, code fences, file paths, URLs, bullets, or formatting.
-If the content is a question, preserve the question instead of answering it.
+You rewrite assistant responses for text-to-speech.
+
+Goal: produce a shorter version of the original response, not a third-person summary.
+Preserve the original speaker, tone, intent, stance, and direct address.
+Keep first person as first person, second person as second person.
+Do not say "the assistant", "the response", "they", or describe what was said.
+Return only the rewritten spoken text.
+No markdown, bullets, code fences, URLs, file paths, prefaces, or explanations.
+If the original asks a question, preserve the question rather than answering it.
 """
 user_prompt_template = """
-Write one complete spoken summary in {max_words} words or fewer.
-Stop after the summary.
+Rewrite this response into {max_words} words or fewer for spoken playback.
+Keep the same voice and intent, just shorter.
 
 {text}
 """
