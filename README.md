@@ -1,12 +1,20 @@
 # tts-summarizer
 
-Harness-neutral local TTS summarizer daemon for macOS/Apple Silicon. It accepts HTTP speech requests, keeps MLX summarizer/TTS models warm, and returns WAV bytes for client-side playback.
+`tts-summarizer` is a small HTTP daemon you can bind to any AI application. It turns long AI responses into shorter, speech-friendly text, then returns TTS audio as WAV bytes.
+
+## What this is
+
+- A local HTTP service for AI apps that want spoken responses.
+- Summarizes long assistant output into text that fits spoken playback.
+- Generates TTS audio for client-side playback.
+- Lets you configure your own summarization and TTS models, local or remote.
+- Works with local MLX models and OpenAI-compatible endpoints.
 
 ## Requirements
 
 - Python 3.11+
 - `uv`
-- Apple Silicon Mac for MLX TTS runtime
+- Apple Silicon Mac for local MLX TTS runtime
 
 ## Install for local development
 
@@ -17,11 +25,11 @@ uv sync --dev
 ## Common commands
 
 ```bash
-make build      # uv build
-make test       # uv run python -m unittest discover -s tests -v
-make typecheck  # uvx ty check src tests
-make check      # typecheck, test, then build
-make run        # uv run python -m tts_summarizer serve --config config.toml
+make build # uv build
+make test # uv run python -m unittest discover -s tests -v
+make typecheck # uvx ty check src tests
+make check # typecheck, test, build
+make run # uv run python -m tts_summarizer serve --config config.toml
 ```
 
 Use another config:
@@ -36,7 +44,7 @@ make run CONFIG=/path/to/config.toml
 uv run tts-summarizer serve --config config.toml
 ```
 
-The daemon binds to `127.0.0.1`, writes its state under the configured `state_dir`, and loads MLX models lazily on first use.
+The daemon binds `127.0.0.1`, writes state under configured `state_dir`, and loads local MLX models lazily on first use.
 
 FastAPI OpenAPI docs are available while the daemon is running:
 
@@ -59,11 +67,45 @@ curl -sS \
 
 Use `"summarize": false` to send text directly to TTS.
 
-## Remote TTS backend
+## Configure summarization models
 
-TTS profiles can call an OpenAI/MLX-Audio-compatible server instead loading `mlx_audio` in process:
+Summarizer profiles use OpenAI-compatible chat completion endpoints. Point them at a local server, an oMLX deployment, or another compatible remote endpoint.
 
 ```toml
+[summarizer]
+default_profile = "qwen25"
+
+[summarizer.profiles.qwen25]
+base_url = "http://127.0.0.1:9000/v1"
+api_key = "omlx"
+model = "mlx-community/Qwen2.5-1.5B-Instruct-4bit"
+max_words = 40
+```
+
+## Configure TTS models
+
+TTS profiles can run local `mlx_audio` models in process or call a remote OpenAI/MLX-Audio-compatible endpoint.
+
+Local example:
+
+```toml
+[tts]
+default_profile = "kokoro"
+
+[tts.profiles.kokoro]
+model = "mlx-community/Kokoro-82M-bf16"
+
+[tts.profiles.kokoro.generate_kwargs]
+voice = "af_heart"
+lang_code = "a"
+```
+
+Remote example:
+
+```toml
+[tts]
+default_profile = "remote-kokoro"
+
 [tts.profiles.remote-kokoro]
 backend = "remote"
 base_url = "http://127.0.0.1:9100/v1"
@@ -78,7 +120,7 @@ lang_code = "a"
 response_format = "wav"
 ```
 
-The daemon posts to `{base_url}/audio/speech` and streams the returned WAV bytes unchanged. Set `[tts] default_profile = "remote-kokoro"` to use it by default.
+Remote TTS posts to `{base_url}/audio/speech` and streams returned WAV bytes unchanged.
 
 ## Check and stop
 
@@ -94,44 +136,30 @@ uv run tts-summarizer stop --config config.toml
 3. `~/.config/tts-summarizer/config.toml`
 4. built-in defaults
 
-See `config.toml` for model, prompt, and server settings.
-
-Model-specific `mlx-audio` generation arguments belong under `[tts.profiles.<name>.generate_kwargs]`:
-
-```toml
-[tts]
-default_profile = "qwen"
-
-[tts.profiles.qwen]
-model = "mlx-community/Qwen3-TTS-12Hz-1.7B-Base-8bit"
-
-[tts.profiles.qwen.generate_kwargs]
-voice = "Chelsie"
-lang_code = "English"
-```
+See `config.toml` for server settings, prompts, and model profiles.
 
 ## Logging
 
 The package ships `src/tts_summarizer/logging.conf`, using `colorlog.ColoredFormatter` like `korean-name-generator`.
 
-Use a custom logging config from TOML:
+Use custom logging config TOML:
 
 ```toml
 [logging]
 config_file = "/path/to/logging.conf"
 ```
 
-## Versioning and releases
+## Versioning releases
 
 Version is stored in `pyproject.toml` at `project.version`.
 
-Releases use Python Semantic Release with Conventional Commits:
+Releases use Python Semantic Release Conventional Commits:
 
 - `fix:` bumps patch.
 - `feat:` bumps minor.
 - breaking changes bump major.
 
-On pushes to `main`, `.github/workflows/release.yml` runs `make check`, creates a GitHub release/tag when semantic-release finds releasable commits, builds with `uv build`, and publishes to PyPI through Trusted Publishing.
+On pushes to `main`, `.github/workflows/release.yml` runs `make check`, creates a GitHub release/tag when semantic-release finds releasable commits, builds `uv build`, and publishes to PyPI through Trusted Publishing.
 
 Required GitHub setup:
 
