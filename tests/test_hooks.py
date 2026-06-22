@@ -524,12 +524,19 @@ class HookInstallerTests(unittest.TestCase):
 
 
 class OmpHookTests(unittest.TestCase):
-    def _write_node_runner(self, tmp: Path, entries: list[dict[str, object]]) -> Path:
+    def _write_node_runner(
+        self,
+        tmp: Path,
+        event_name: str,
+        event: dict[str, object],
+        entries: list[dict[str, object]],
+    ) -> Path:
         hook_mjs = tmp / "omp_tts.mjs"
         hook_mjs.write_text(
             (ROOT / "hooks" / "omp" / "tts.ts").read_text(encoding="utf-8"),
             encoding="utf-8",
         )
+
         runner = tmp / "run-omp-hook.mjs"
         runner.write_text(
             "\n".join(
@@ -537,41 +544,50 @@ class OmpHookTests(unittest.TestCase):
                     "import hook from './omp_tts.mjs';",
                     "const handlers = {};",
                     "const pi = { on(name, handler) { handlers[name] = handler; } };",
+                    f"const event = {json.dumps(event)};",
                     f"const entries = {json.dumps(entries)};",
                     "hook(pi);",
-                    "await handlers.turn_end({}, { cwd: '/repo/demo', sessionManager: { getEntries: () => entries } });",
+                    f"if (handlers[{json.dumps(event_name)}]) {{",
+                    f"  await handlers[{json.dumps(event_name)}](event, {{ cwd: '/repo/demo', sessionManager: {{ getEntries: () => entries }} }});",
+                    "}",
                 ]
             ),
             encoding="utf-8",
         )
         return runner
 
-    def test_omp_hook_speaks_latest_assistant_text(self):
+    def test_omp_hook_speaks_agent_end_current_assistant_text(self):
         with tempfile.TemporaryDirectory() as tmp_name:
             tmp = Path(tmp_name)
             capture = stub_tts(tmp)
             runner = self._write_node_runner(
                 tmp,
-                [
-                    {
-                        "type": "message",
-                        "message": {
-                            "role": "assistant",
-                            "content": [{"type": "text", "text": "First answer"}],
-                        },
-                    },
-                    {
-                        "type": "message",
-                        "message": {
+                "agent_end",
+                {
+                    "type": "agent_end",
+                    "messages": [
+                        {
                             "role": "assistant",
                             "content": [
                                 {"type": "thinking", "thinking": "ignore"},
                                 {"type": "text", "text": "OMP final answer"},
                             ],
+                        }
+                    ],
+                },
+                [
+                    {
+                        "type": "message",
+                        "message": {
+                            "role": "assistant",
+                            "content": [
+                                {"type": "text", "text": "Previous persisted answer"}
+                            ],
                         },
-                    },
+                    }
                 ],
             )
+
             env = os.environ.copy()
             env.update(
                 {
@@ -591,21 +607,62 @@ class OmpHookTests(unittest.TestCase):
             )
             self.assertEqual(call["stdin"], "")
 
+    def test_omp_hook_ignores_turn_end_intermediate_messages(self):
+        with tempfile.TemporaryDirectory() as tmp_name:
+            tmp = Path(tmp_name)
+            capture = stub_tts(tmp)
+            runner = self._write_node_runner(
+                tmp,
+                "turn_end",
+                {
+                    "type": "turn_end",
+                    "message": {
+                        "role": "assistant",
+                        "content": [
+                            {"type": "text", "text": "Intermediate assistant text"}
+                        ],
+                    },
+                    "toolResults": [],
+                },
+                [
+                    {
+                        "type": "message",
+                        "message": {
+                            "role": "assistant",
+                            "content": [
+                                {"type": "text", "text": "Intermediate assistant text"}
+                            ],
+                        },
+                    }
+                ],
+            )
+            env = os.environ.copy()
+            env["OMP_TTS_BIN"] = str(tmp / "bin" / "tts-summarizer")
+
+            subprocess.run(
+                ["node", str(runner)], check=True, cwd=tmp, env=env, timeout=1
+            )
+            time.sleep(0.2)
+
+            self.assertFalse(capture.exists())
+
     def test_omp_hook_exits_before_speech_finishes(self):
         with tempfile.TemporaryDirectory() as tmp_name:
             tmp = Path(tmp_name)
             capture = stub_tts(tmp, delay=1.5)
             runner = self._write_node_runner(
                 tmp,
-                [
-                    {
-                        "type": "message",
-                        "message": {
+                "agent_end",
+                {
+                    "type": "agent_end",
+                    "messages": [
+                        {
                             "role": "assistant",
                             "content": [{"type": "text", "text": "Slow OMP speech"}],
-                        },
-                    }
-                ],
+                        }
+                    ],
+                },
+                [],
             )
             env = os.environ.copy()
             env["OMP_TTS_BIN"] = str(tmp / "bin" / "tts-summarizer")
@@ -620,7 +677,7 @@ class OmpHookTests(unittest.TestCase):
                 ["speak", "--session_id", "omp:/repo/demo", "Slow OMP speech"],
             )
 
-    def test_cli_install_omp_hook_copies_global_hook_file(self):
+    def test_cli_install_omp_global_extension_file(self):
         with tempfile.TemporaryDirectory() as tmp_name:
             home = Path(tmp_name)
             old_home, old_path = with_home_and_path(home, os.environ["PATH"])
@@ -632,7 +689,7 @@ class OmpHookTests(unittest.TestCase):
 
             installed = home / ".omp" / "agent" / "extensions" / "tts-summarizer.ts"
             self.assertTrue(installed.exists())
-            self.assertIn("turn_end", installed.read_text(encoding="utf-8"))
+            self.assertIn("agent_end", installed.read_text(encoding="utf-8"))
 
     def test_cli_install_pi_agent_alias_copies_global_extension_file(self):
         with tempfile.TemporaryDirectory() as tmp_name:
@@ -645,7 +702,7 @@ class OmpHookTests(unittest.TestCase):
 
             installed = home / ".pi" / "agent" / "extensions" / "tts-summarizer.ts"
             self.assertTrue(installed.exists())
-            self.assertIn("turn_end", installed.read_text(encoding="utf-8"))
+            self.assertIn("agent_end", installed.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

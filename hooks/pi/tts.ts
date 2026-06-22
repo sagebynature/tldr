@@ -14,13 +14,22 @@ function textFromContent(content) {
     .trim();
 }
 
-export function latestAssistantText(entries) {
-  if (!Array.isArray(entries)) {
+function messageFromEntry(value) {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+  if ("message" in value) {
+    return value.message;
+  }
+  return value;
+}
+
+export function latestAssistantText(messages) {
+  if (!Array.isArray(messages)) {
     return "";
   }
-  for (let index = entries.length - 1; index >= 0; index -= 1) {
-    const entry = entries[index];
-    const message = entry && typeof entry === "object" ? entry.message : null;
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messageFromEntry(messages[index]);
     if (!message || message.role !== "assistant") {
       continue;
     }
@@ -33,8 +42,8 @@ export function latestAssistantText(entries) {
 }
 
 export default function ttsSummarizerHook(pi) {
-  pi.on("turn_end", async (_event, ctx) => {
-    const text = latestAssistantText(ctx?.sessionManager?.getEntries?.());
+  pi.on("agent_end", async (event, ctx) => {
+    const text = latestAssistantText(event.messages);
     if (!text) {
       return;
     }
