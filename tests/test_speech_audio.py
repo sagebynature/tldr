@@ -3,8 +3,8 @@ import unittest
 import wave
 
 import tts_summarizer.speech
-from tts_summarizer.audio import chunks_to_wav_bytes
-from tts_summarizer.config import TtsConfig
+from tts_summarizer.audio import chunks_to_wav_bytes, chunks_to_wav_stream
+from tts_summarizer.config import TtsConfig, TtsProfileConfig
 from tts_summarizer.speech import AudioChunk, SpeechGenerator
 
 
@@ -15,13 +15,53 @@ class FakeBackend:
 
 class SpeechAudioTests(unittest.TestCase):
     def test_speech_generator_passes_text(self):
-        generator = SpeechGenerator(TtsConfig(sample_rate=8000), backend=FakeBackend())
+        generator = SpeechGenerator(
+            TtsConfig(
+                profiles={"qwen": TtsProfileConfig(sample_rate=8000)}
+            ),
+            backend=FakeBackend(),
+        )
 
         chunks = generator.generate("hello")
 
         self.assertEqual(
             chunks, [AudioChunk(samples=[0.0, 0.25, -0.25], sample_rate=8000)]
         )
+
+    def test_speech_generator_selects_named_profile(self):
+        calls = []
+
+        class CapturingBackend:
+            def generate(self, text, config):
+                calls.append((text, config))
+                return [AudioChunk(samples=[0.0], sample_rate=config.sample_rate)]
+
+        generator = SpeechGenerator(
+            TtsConfig(
+                default_profile="qwen",
+                profiles={
+                    "qwen": TtsProfileConfig(model="qwen", sample_rate=24000),
+                    "kokoro": TtsProfileConfig(
+                        model="kokoro",
+                        sample_rate=16000,
+                        generate_kwargs={"speed": 1.6},
+                    ),
+                },
+            ),
+            backend=CapturingBackend(),
+        )
+
+        chunks = list(generator.generate("hello", profile_name="kokoro"))
+
+        self.assertEqual(chunks[0].sample_rate, 16000)
+        self.assertEqual(calls[0][1].model, "kokoro")
+        self.assertEqual(calls[0][1].generate_kwargs["speed"], 1.6)
+
+    def test_speech_generator_rejects_unknown_profile(self):
+        generator = SpeechGenerator(TtsConfig(), backend=FakeBackend())
+
+        with self.assertRaises(ValueError):
+            list(generator.generate("hello", profile_name="missing"))
 
     def test_mlx_backend_forwards_generate_kwargs_and_stream(self):
         calls = []
@@ -35,17 +75,16 @@ class SpeechAudioTests(unittest.TestCase):
                 calls.append(kwargs)
                 return [Result()]
 
-        config = TtsConfig(
+        config = TtsProfileConfig(
             model="fake",
             sample_rate=8000,
             stream=False,
             generate_kwargs={"cfg_scale": 2.5, "steps": 30},
         )
         backend = tts_summarizer.speech.MlxAudioBackend()
-        backend._model = Model()
-        backend._model_name = config.model
+        backend._models[config.model] = Model()
 
-        chunks = backend.generate("hello", config)
+        chunks = list(backend.generate("hello", config))
 
         self.assertEqual(
             calls, [{"text": "hello", "cfg_scale": 2.5, "steps": 30, "stream": False}]
@@ -60,13 +99,52 @@ class SpeechAudioTests(unittest.TestCase):
                 calls.append(kwargs)
                 return []
 
-        config = TtsConfig(model="fake", stream=False, generate_kwargs={"stream": True})
+        config = TtsProfileConfig(
+            model="fake", stream=False, generate_kwargs={"stream": True}
+        )
         backend = tts_summarizer.speech.MlxAudioBackend()
-        backend._model = Model()
-        backend._model_name = config.model
+        backend._models[config.model] = Model()
 
-        self.assertEqual(backend.generate("hello", config), [])
+        self.assertEqual(list(backend.generate("hello", config)), [])
         self.assertEqual(calls, [{"text": "hello", "stream": True}])
+
+    def test_mlx_backend_caches_loaded_models_by_name(self):
+        loaded = []
+
+        class Model:
+            def generate(self, **kwargs):
+                return []
+
+        backend = tts_summarizer.speech.MlxAudioBackend()
+
+        def load(model_name):
+            loaded.append(model_name)
+            return Model()
+
+        backend._load_model = load
+
+        list(backend.generate("hello", TtsProfileConfig(model="a")))
+        list(backend.generate("hello", TtsProfileConfig(model="b")))
+        list(backend.generate("hello again", TtsProfileConfig(model="a")))
+
+        self.assertEqual(loaded, ["a", "b"])
+
+    def test_kokoro_sinegen_patch_aligns_noise_length_mismatch(self):
+        try:
+            import mlx.core as mx
+            from mlx_audio.tts.models.kokoro.istftnet import SineGen
+        except ImportError:
+            self.skipTest("mlx-audio Kokoro not installed")
+
+        tts_summarizer.speech._patch_kokoro_sinegen()
+        sine = SineGen(samp_rate=24000, upsample_scale=300, harmonic_num=8)
+        setattr(sine, "_f02sine", lambda _fn: mx.ones((1, 4, 9)))
+
+        sine_waves, uv, noise = sine(mx.ones((1, 3, 1)))
+        mx.eval(sine_waves, uv, noise)
+
+        self.assertEqual(sine_waves.shape, (1, 3, 9))
+        self.assertEqual(uv.shape, (1, 3, 1))
 
     def test_chunks_to_wav_bytes_returns_readable_wav(self):
         body = chunks_to_wav_bytes(
@@ -99,6 +177,20 @@ class SpeechAudioTests(unittest.TestCase):
                     AudioChunk(samples=[0.0], sample_rate=16000),
                 ]
             )
+
+    def test_chunks_to_wav_stream_yields_header_before_consuming_chunks(self):
+        events = []
+
+        def chunks():
+            events.append("consumed")
+            yield AudioChunk(samples=[0.0], sample_rate=8000)
+
+        stream = chunks_to_wav_stream(chunks())
+
+        self.assertTrue(next(stream).startswith(b"RIFF"))
+        self.assertEqual(events, [])
+        self.assertEqual(next(stream), b"\x00\x00")
+        self.assertEqual(events, ["consumed"])
 
 
 if __name__ == "__main__":

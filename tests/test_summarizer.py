@@ -184,6 +184,67 @@ class SummarizerTests(unittest.TestCase):
             },
         )
 
+
+    def test_openai_backend_merges_extra_body(self):
+        calls = []
+
+        class Response:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def read(self):
+                return b'{"choices":[{"message":{"content":"short summary"}}]}'
+
+        def fake_urlopen(request, timeout):
+            calls.append(request)
+            return Response()
+
+        backend = OpenAICompatibleBackend(urlopen=fake_urlopen)
+        backend.generate(
+            [{"role": "user", "content": "hello"}],
+            SummarizerConfig(
+                model="local-model",
+                extra_body={"chat_template_kwargs": {"enable_thinking": False}},
+            ),
+        )
+
+        self.assertEqual(
+            json.loads(calls[0].data.decode("utf-8"))["chat_template_kwargs"],
+            {"enable_thinking": False},
+        )
+
+    def test_openai_backend_retries_once_when_generation_hits_token_limit(self):
+        calls = []
+        bodies = [
+            b'{"choices":[{"finish_reason":"length","message":{"content":"cut off"}}]}',
+            b'{"choices":[{"finish_reason":"stop","message":{"content":"complete summary"}}]}',
+        ]
+
+        class Response:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def read(self):
+                return bodies.pop(0)
+
+        def fake_urlopen(request, timeout):
+            calls.append(json.loads(request.data.decode("utf-8")))
+            return Response()
+
+        backend = OpenAICompatibleBackend(urlopen=fake_urlopen)
+        result = backend.generate(
+            [{"role": "user", "content": "hello"}],
+            SummarizerConfig(model="local-model", max_tokens=50),
+        )
+
+        self.assertEqual(result, "complete summary")
+        self.assertEqual([call["max_tokens"] for call in calls], [50, 100])
     def test_openai_backend_posts_auth_when_configured(self):
         calls = []
 

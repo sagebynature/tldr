@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from collections.abc import Iterable as IterableABC
-from typing import Any, Iterable, Protocol, cast
+from typing import Any, Iterable, Iterator, Protocol, cast
 import io
 import math
+import struct
 import wave
 
 from .speech import AudioChunk
@@ -30,6 +31,30 @@ def chunks_to_wav_bytes(chunks: Iterable[AudioChunk]) -> bytes:
         if sample_rate is None:
             wav.setframerate(8000)
     return buffer.getvalue()
+
+
+def chunks_to_wav_stream(
+    chunks: Iterable[AudioChunk], sample_rate: int = 8000
+) -> Iterator[bytes]:
+    yield _wav_stream_header(sample_rate)
+    for chunk in chunks:
+        if chunk.sample_rate != sample_rate:
+            raise ValueError("all audio chunks use sample_rate")
+        samples = _to_float_list(chunk.samples)
+        yield b"".join(_to_i16(sample) for sample in samples)
+
+
+def _wav_stream_header(sample_rate: int) -> bytes:
+    return b"".join(
+        (
+            b"RIFF",
+            struct.pack("<I", 0xFFFFFFFF),
+            b"WAVEfmt ",
+            struct.pack("<IHHIIHH", 16, 1, 1, sample_rate, sample_rate * 2, 2, 16),
+            b"data",
+            struct.pack("<I", 0xFFFFFFFF),
+        )
+    )
 
 
 def _to_float_list(samples: object) -> list[float]:

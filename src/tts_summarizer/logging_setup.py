@@ -15,7 +15,8 @@ def _log_config(config: Config) -> None:
         ("host", config.server.host),
         ("port", config.server.port),
         ("sum.model", config.summarizer.model),
-        ("tts.model", config.tts.model),
+        ("tts.profile", config.tts.default_profile),
+        ("tts.model", config.tts.profiles[config.tts.default_profile].model),
         ("audio.backend", config.audio.backend),
     ):
         logger.info("  %s=%s", label, value)

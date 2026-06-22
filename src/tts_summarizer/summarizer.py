@@ -29,22 +29,35 @@ class OpenAICompatibleBackend:
         self.timeout = timeout
 
     def generate(self, messages: list[dict[str, str]], config: SummarizerConfig) -> str:
+        token_limits = (config.max_tokens, config.max_tokens * 2)
+        content = ""
+        for max_tokens in token_limits:
+            payload = self._post_completion(messages, config, max_tokens)
+            choice = payload["choices"][0]
+            content = str(choice["message"]["content"])
+            if choice.get("finish_reason") != "length":
+                return content
+            logger.warning("summary hit max_tokens=%s; retrying with larger limit", max_tokens)
+        return content
+
+    def _post_completion(
+        self, messages: list[dict[str, str]], config: SummarizerConfig, max_tokens: int
+    ):
         url = f"{config.base_url.rstrip('/')}/chat/completions"
-        body = json.dumps(
-            {
-                "model": config.model,
-                "messages": messages,
-                "temperature": config.temperature,
-                "max_tokens": config.max_tokens,
-            }
-        ).encode("utf-8")
+        body = {
+            "model": config.model,
+            "messages": messages,
+            "temperature": config.temperature,
+            "max_tokens": max_tokens,
+            **config.extra_body,
+        }
+        body_bytes = json.dumps(body).encode("utf-8")
         headers = {"Content-Type": "application/json"}
         if config.api_key:
             headers["Authorization"] = f"Bearer {config.api_key}"
-        request = Request(url, data=body, headers=headers, method="POST")
+        request = Request(url, data=body_bytes, headers=headers, method="POST")
         with cast(Any, self.urlopen(request, timeout=self.timeout)) as response:
-            payload = json.loads(response.read().decode("utf-8"))
-        return str(payload["choices"][0]["message"]["content"])
+            return json.loads(response.read().decode("utf-8"))
 
 
 class Summarizer:

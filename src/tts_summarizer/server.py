@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import replace
 import logging
 import os
@@ -7,11 +8,11 @@ import socket
 
 from fastapi import FastAPI, Request, Response
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, ConfigDict
 import uvicorn
 
-from .audio import chunks_to_wav_bytes
+from .audio import chunks_to_wav_stream
 from .config import Config
 from .request import RequestError, SpeechRequest
 from .speech import SpeechGenerator
@@ -28,6 +29,7 @@ class SpeakRequestBody(BaseModel):
     text: str
     metadata: dict[str, object] | None = None
     summarize: bool = True
+    tts_profile: str | None = None
 
 
 class SummarizeRequestBody(BaseModel):
@@ -53,7 +55,7 @@ SUMMARY_OVERRIDE_KEYS = {
 }
 
 
-def synthesize_speech(request: SpeechRequest, summarizer, speech) -> bytes:
+def synthesize_speech(request: SpeechRequest, summarizer, speech) -> Iterable[bytes]:
     logger.info("incoming text session=%s text=%r", request.session_key(), request.text)
     if request.summarize:
         logger.info("summarizing speech request session=%s", request.session_key())
@@ -69,8 +71,19 @@ def synthesize_speech(request: SpeechRequest, summarizer, speech) -> bytes:
     else:
         text = request.text
         logger.info("summary skipped session=%s", request.session_key())
-    logger.info("generating speech session=%s", request.session_key())
-    return chunks_to_wav_bytes(speech.generate(text))
+    logger.info(
+        "generating speech session=%s profile=%s",
+        request.session_key(),
+        request.tts_profile,
+    )
+    sample_rate = (
+        speech.sample_rate(request.tts_profile)
+        if hasattr(speech, "sample_rate")
+        else getattr(getattr(speech, "config", None), "sample_rate", 8000)
+    )
+    return chunks_to_wav_stream(
+        speech.generate(text, profile_name=request.tts_profile), sample_rate
+    )
 
 
 def _summary_request(payload: dict[str, object], config: Config):
@@ -123,8 +136,11 @@ def create_app(config: Config, summarizer=None, speech=None) -> FastAPI:
             )
         except RequestError as exc:
             return JSONResponse(status_code=400, content={"error": str(exc)})
-        body = synthesize_speech(speech_request, summarizer, speech)
-        return Response(content=body, media_type="audio/wav")
+        try:
+            body = synthesize_speech(speech_request, summarizer, speech)
+        except ValueError as exc:
+            return JSONResponse(status_code=400, content={"error": str(exc)})
+        return StreamingResponse(body, media_type="audio/wav")
 
     @app.post("/v1/summarize", response_model=SummarizeResponseBody)
     def summarize(payload: SummarizeRequestBody):

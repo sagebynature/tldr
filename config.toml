@@ -11,34 +11,50 @@ request_timeout_ms = 5000
 enabled = true
 base_url = "http://127.0.0.1:9000/v1"
 api_key = "omlx"
-model = "mlx-community/Qwen3-0.6B-4bit"
+# model = "mlx-community/Qwen3-0.6B-4bit"
+model = "mlx-community/Qwen2.5-1.5B-Instruct-4bit"
 word_threshold = 0
 max_words = 40
-temperature = 0.2
+temperature = 0.1
 max_tokens = 180
 system_prompt = """
 You summarize assistant responses for text-to-speech.
-Return only a spoken summary.
-Do not mention that this is a summary.
+Return only the final spoken summary.
+Do not include reasoning, analysis, planning, explanations, prefaces, markdown, code fences, file paths, URLs, bullets, or formatting.
 If the content is a question, preserve the question instead of answering it.
-Do not include markdown, code fences, file paths, URLs, bullets, or formatting.
 """
 user_prompt_template = """
-Summarize this response in {max_words} words or fewer.
-Preserve the practical outcome and next action.
+Write one complete spoken summary in {max_words} words or fewer.
+Stop after the summary.
 
 {text}
 """
 
+[summarizer.extra_body.chat_template_kwargs]
+enable_thinking = false
+
 [tts]
+default_profile = "kokoro"
+
+[tts.profiles.qwen]
 model = "mlx-community/Qwen3-TTS-12Hz-1.7B-CustomVoice-8bit"
 stream = true
 sample_rate = 24000
 
-[tts.generate_kwargs]
+[tts.profiles.qwen.generate_kwargs]
 voice = "Aiden"
-language = "English"
-speed = 2.0
+lang_code = "english"
+streaming_interval = 0.32
+
+[tts.profiles.kokoro]
+model = "mlx-community/Kokoro-82M-8bit"
+stream = true
+sample_rate = 24000
+
+[tts.profiles.kokoro.generate_kwargs]
+voice = "af_alloy"
+lang_code = "a"
+speed = 1.3
 
 [audio]
 backend = "auto"                             # auto | ffplay | file

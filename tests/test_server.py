@@ -17,9 +17,11 @@ class FakeSummarizer:
 class CapturingSpeech:
     def __init__(self):
         self.text = ""
+        self.profile_name = None
 
-    def generate(self, text):
+    def generate(self, text, profile_name=None):
         self.text = text
+        self.profile_name = profile_name
         return [AudioChunk(samples=[0.0], sample_rate=8000)]
 
 
@@ -143,6 +145,16 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(speech.text, "summary: hello")
         self.assertIn("session=header:header-session", "\n".join(logs.output))
 
+    def test_fastapi_speak_route_streams_without_content_length(self):
+        client = TestClient(
+            create_app(Config(), summarizer=FakeSummarizer(), speech=CapturingSpeech())
+        )
+
+        response = client.post("/v1/speak", json={"text": "hello"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("content-length", response.headers)
+
     def test_fastapi_speak_route_summarizes_by_default(self):
         speech = CapturingSpeech()
         client = TestClient(
@@ -166,6 +178,20 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.headers["content-type"], "audio/wav")
         self.assertEqual(speech.text, "hello")
+
+    def test_fastapi_speak_route_passes_tts_profile(self):
+        speech = CapturingSpeech()
+        client = TestClient(
+            create_app(Config(), summarizer=FakeSummarizer(), speech=speech)
+        )
+
+        response = client.post(
+            "/v1/speak",
+            json={"text": "hello", "summarize": False, "tts_profile": "kokoro"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(speech.profile_name, "kokoro")
 
     def test_fastapi_speak_route_rejects_payload_identity_and_playback(self):
         client = TestClient(

@@ -32,6 +32,14 @@ class RequestTests(unittest.TestCase):
         self.assertIs(request.summarize, False)
         self.assertEqual(request.to_json()["summarize"], False)
 
+    def test_speech_request_accepts_tts_profile(self):
+        request = SpeechRequest.from_json(
+            {"text": "hello", "tts_profile": "kokoro"}, caller="c", session_id="s"
+        )
+
+        self.assertEqual(request.tts_profile, "kokoro")
+        self.assertEqual(request.to_json()["tts_profile"], "kokoro")
+
     def test_missing_text_fails(self):
         with self.assertRaises(RequestError):
             SpeechRequest.from_json({"metadata": {"x": 1}})

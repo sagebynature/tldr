@@ -17,6 +17,9 @@ dependencies = [
   "uvicorn",
 ]
 
+[project.optional-dependencies]
+kokoro = ["misaki", "num2words", "spacy", "espeakng-loader", "phonemizer-fork"]
+
 [dependency-groups]
 dev = ["ty==0.0.23", "ruff>=0.5", "httpx"]
 

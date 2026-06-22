@@ -10,9 +10,9 @@ class ConfigError(ValueError):
     pass
 
 
-DEFAULT_SYSTEM_PROMPT = """You summarize assistant responses for text-to-speech. Return only spoken summary. Do not mention that this is a summary. If content is a question, preserve the question instead of answering it. Do not include markdown, code fences, file paths, URLs, bullets, or formatting."""
+DEFAULT_SYSTEM_PROMPT = """You summarize assistant responses for text-to-speech. Return only the final spoken summary. Do not include reasoning, analysis, planning, explanations, prefaces, markdown, code fences, file paths, URLs, bullets, or formatting. If the content is a question, preserve the question instead of answering it."""
 
-DEFAULT_USER_PROMPT_TEMPLATE = """Summarize response in {max_words} words or fewer. Preserve practical outcome and next action.
+DEFAULT_USER_PROMPT_TEMPLATE = """Write one complete spoken summary in {max_words} words or fewer. Stop after the summary.
 
 {text}"""
 
@@ -37,16 +37,27 @@ class SummarizerConfig:
     max_words: int = 40
     temperature: float = 0.2
     max_tokens: int = 180
+    extra_body: dict[str, object] = field(default_factory=dict)
     system_prompt: str = DEFAULT_SYSTEM_PROMPT
     user_prompt_template: str = DEFAULT_USER_PROMPT_TEMPLATE
 
 
 @dataclass(frozen=True)
-class TtsConfig:
+class TtsProfileConfig:
     model: str = "mlx-community/Qwen3-TTS-12Hz-1.7B-Base-8bit"
     stream: bool = True
     sample_rate: int = 24000
     generate_kwargs: dict[str, object] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class TtsConfig:
+    default_profile: str = "qwen"
+    profiles: dict[str, TtsProfileConfig] = field(
+        default_factory=lambda: {
+            "qwen": TtsProfileConfig(),
+        }
+    )
 
 
 @dataclass(frozen=True)
@@ -87,6 +98,25 @@ def _merge_dataclass(instance: Any, values: dict[str, Any]) -> Any:
     return replace(instance, **values)
 
 
+def _merge_tts_config(instance: TtsConfig, values: dict[str, Any]) -> TtsConfig:
+    valid = {"default_profile", "profiles"}
+    unknown = sorted(set(values) - valid)
+    if unknown:
+        raise ConfigError(f"unknown config keys for TtsConfig: {', '.join(unknown)}")
+    profiles = {
+        name: _merge_dataclass(TtsProfileConfig(), profile)
+        for name, profile in values.get("profiles", {}).items()
+    }
+    merged = replace(
+        instance,
+        default_profile=values.get("default_profile", instance.default_profile),
+        profiles=profiles or instance.profiles,
+    )
+    if merged.default_profile not in merged.profiles:
+        raise ConfigError(f"unknown default TTS profile: {merged.default_profile}")
+    return merged
+
+
 def _apply(raw: dict[str, Any], source: Path | None) -> Config:
     cfg = Config(source=source)
     allowed = {"server", "summarizer", "tts", "audio", "logging"}
@@ -96,7 +126,7 @@ def _apply(raw: dict[str, Any], source: Path | None) -> Config:
     return Config(
         server=_merge_dataclass(cfg.server, raw.get("server", {})),
         summarizer=_merge_dataclass(cfg.summarizer, raw.get("summarizer", {})),
-        tts=_merge_dataclass(cfg.tts, raw.get("tts", {})),
+        tts=_merge_tts_config(cfg.tts, raw.get("tts", {})),
         audio=_merge_dataclass(cfg.audio, raw.get("audio", {})),
         logging=_merge_dataclass(cfg.logging, raw.get("logging", {})),
         source=source,
