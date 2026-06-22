@@ -187,6 +187,7 @@ def run_server(config: Config) -> int:
     service = TtsService(config)
     app = create_app(config, service)
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.bind((config.server.host, config.server.port))
     sock.listen()
     host, port = sock.getsockname()[:2]

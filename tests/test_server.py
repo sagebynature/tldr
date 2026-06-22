@@ -1,4 +1,5 @@
 import threading
+import socket
 import time
 import unittest
 import unittest.mock
@@ -138,6 +139,9 @@ class ServerTests(unittest.TestCase):
         events = []
 
         class FakeSocket:
+            def setsockopt(self, level, optname, value):
+                events.append(("setsockopt", level, optname, value))
+
             def bind(self, address):
                 events.append(("bind", address))
 
@@ -188,6 +192,7 @@ class ServerTests(unittest.TestCase):
             self.assertEqual(run_server(Config()), 0)
 
         self.assertIs(thread.call_args.kwargs["daemon"], False)
+        self.assertIn(("setsockopt", socket.SOL_SOCKET, socket.SO_REUSEADDR, 1), events)
         self.assertEqual(events[-2:], ["stop", "join"])
     def test_fastapi_openapi_schema_exists(self):
         service = TtsService(Config(), summarizer=FakeSummarizer(), speech=FakeSpeech(), player=FakePlayer())
