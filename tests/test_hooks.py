@@ -691,6 +691,41 @@ class HookInstallerTests(unittest.TestCase):
             self.assertEqual(config.count(command), 1)
 
 
+    def test_cli_install_hermes_hook_inserts_entry_inside_existing_hooks_block(self):
+        with tempfile.TemporaryDirectory() as tmp_name:
+            home = Path(tmp_name)
+            hermes_dir = home / ".hermes"
+            config_yaml = hermes_dir / "config.yaml"
+            hermes_dir.mkdir()
+            config_yaml.write_text(
+                'hooks:\n'
+                '  pre_llm_call:\n'
+                '    - command: "existing"\n'
+                'theme: dark\n',
+                encoding="utf-8",
+            )
+            old_home, old_path = with_home_and_path(
+                home, f"{home / 'bin'}{os.pathsep}{os.environ['PATH']}"
+            )
+            try:
+                self.assertEqual(cli.main(["install", "--harness", "hermes"]), 0)
+            finally:
+                restore_home_and_path(old_home, old_path)
+
+            installed = (
+                home / ".hermes" / "agent-hooks" / "tts-summarizer" / "hermes_tts.py"
+            )
+            config = config_yaml.read_text(encoding="utf-8")
+            command = str(installed)
+
+            self.assertLess(
+                config.index("  post_llm_call:\n"), config.index("theme: dark\n")
+            )
+            self.assertIn("  pre_llm_call:\n", config)
+            self.assertIn(f'    - command: "{command}"\n', config)
+            self.assertEqual(config.count(command), 1)
+
+
 class OmpHookTests(unittest.TestCase):
     def _write_node_runner(
         self,

@@ -182,29 +182,50 @@ def _quote_yaml_string(value: str) -> str:
     return json.dumps(value)
 
 
+def _hermes_hook_block(command: str) -> str:
+    return (
+        "  post_llm_call:\n"
+        f"    - command: {_quote_yaml_string(command)}\n"
+        "      timeout: 5\n"
+    )
+
+
+def _insert_into_hooks_block(existing: str, block: str) -> str | None:
+    lines = existing.splitlines(keepends=True)
+    if lines and not lines[-1].endswith("\n"):
+        lines[-1] += "\n"
+
+    for index, line in enumerate(lines):
+        if line.strip() != "hooks:" or line.startswith((" ", "\t")):
+            continue
+
+        insert_at = index + 1
+        while insert_at < len(lines):
+            stripped = lines[insert_at].strip()
+            if stripped and not lines[insert_at].startswith((" ", "\t")):
+                break
+            insert_at += 1
+
+        lines.insert(insert_at, block)
+        return "".join(lines)
+
+    return None
+
+
 def _ensure_hermes_config_entry(config_yaml: Path, installed_hook: Path) -> None:
     command = str(installed_hook)
     existing = config_yaml.read_text(encoding="utf-8") if config_yaml.exists() else ""
     if command in existing:
         return
 
-    prefix = "" if not existing or existing.endswith("\n") else "\n"
-    if "hooks:" in existing:
-        block = (
-            f"{prefix}  post_llm_call:\n"
-            f"    - command: {_quote_yaml_string(command)}\n"
-            "      timeout: 5\n"
-        )
-    else:
-        block = (
-            f"{prefix}hooks:\n"
-            "  post_llm_call:\n"
-            f"    - command: {_quote_yaml_string(command)}\n"
-            "      timeout: 5\n"
-        )
+    block = _hermes_hook_block(command)
+    updated = _insert_into_hooks_block(existing, block)
+    if updated is None:
+        prefix = "" if not existing or existing.endswith("\n") else "\n"
+        updated = existing + f"{prefix}hooks:\n{block}"
 
     config_yaml.parent.mkdir(parents=True, exist_ok=True)
-    config_yaml.write_text(existing + block, encoding="utf-8")
+    config_yaml.write_text(updated, encoding="utf-8")
 
 
 def _install_hermes(home: Path) -> Path:
