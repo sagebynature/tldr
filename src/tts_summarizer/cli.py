@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib.resources as resources
 import json
 import os
 from pathlib import Path
@@ -17,6 +18,12 @@ from .installer import install_hook
 
 
 DEFAULT_SPEAK_CONFIG = "~/.config/tts-summarizer/config.toml"
+DEFAULT_USER_CONFIG = Path("~/.config/tts-summarizer/config.toml")
+CONFIG_PROFILE_RESOURCES = {
+    "remote": "config.remote.example.toml",
+    "apple-local": "config.apple-local.example.toml",
+}
+
 
 
 def _parse_bool(value: str) -> bool:
@@ -145,12 +152,42 @@ def _speak(args: argparse.Namespace) -> int:
     return 0
 
 
+def _read_config_resource(resource_name: str) -> str:
+    resource = resources.files("tts_summarizer").joinpath(resource_name)
+    try:
+        return resource.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        source_checkout_resource = Path(__file__).resolve().parents[2] / resource_name
+        return source_checkout_resource.read_text(encoding="utf-8")
+
+
+def _init_config(args: argparse.Namespace) -> int:
+    config_path = Path.home() / DEFAULT_USER_CONFIG.relative_to("~")
+    if config_path.exists() and not args.force:
+        print(
+            f"tts-summarizer config exists: {config_path} (use --force overwrite)",
+            file=sys.stderr,
+        )
+        return 2
+
+    resource_name = CONFIG_PROFILE_RESOURCES[args.profile]
+    text = _read_config_resource(resource_name)
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    config_path.write_text(text, encoding="utf-8")
+    print(config_path)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="tts-summarizer")
     subcommands = parser.add_subparsers(dest="command", required=True)
 
     config_check = subcommands.add_parser("config-check")
     config_check.add_argument("--config")
+
+    init_config = subcommands.add_parser("init-config")
+    init_config.add_argument("--profile", choices=sorted(CONFIG_PROFILE_RESOURCES), default="remote")
+    init_config.add_argument("--force", action="store_true")
 
     serve = subcommands.add_parser("serve")
     serve.add_argument("--config")
@@ -180,6 +217,9 @@ def main(argv: list[str] | None = None) -> int:
         args = parser.parse_args(argv)
     except SystemExit as exc:
         return int(exc.code or 0)
+
+    if args.command == "init-config":
+        return _init_config(args)
 
     if args.command == "install":
         installed = install_hook(args.harness)
