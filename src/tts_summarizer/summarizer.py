@@ -97,11 +97,10 @@ class Summarizer:
         if count_words(text) <= config.word_threshold:
             return text
         logger.info(
-            "summarizing text chars=%s words=%s profile=%s prompt=%s",
+            "summarizing text chars=%s words=%s profile=%s",
             len(text),
             count_words(text),
             profile_name or self.config.default_profile,
-            config.system_prompt,
         )
         sanitized = replace_urls(text)
         messages = [

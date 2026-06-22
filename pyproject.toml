@@ -9,11 +9,7 @@ description = "Harness-neutral local TTS summarizer daemon using MLX"
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [{ name = "sagebynature" }]
-dependencies = [
-  "colorlog>=6.10.1",
-  "fastapi",
-  "uvicorn",
-]
+dependencies = ["colorlog>=6.10.1", "fastapi", "uvicorn"]
 
 [project.optional-dependencies]
 mlx = ["mlx-audio; platform_system == 'Darwin' and platform_machine == 'arm64'"]
@@ -27,7 +23,7 @@ tts-summarizer = "tts_summarizer.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/tts_summarizer"]
-force-include = { "src/tts_summarizer/logging.conf" = "tts_summarizer/logging.conf", "hooks/codex/codex_tts.py" = "tts_summarizer/hooks/codex_tts.py", "config.remote.example.toml" = "tts_summarizer/config.remote.example.toml", "config.apple-local.example.toml" = "tts_summarizer/config.apple-local.example.toml" }
+force-include = { "config.remote.example.toml" = "tts_summarizer/config.remote.example.toml", "config.apple-local.example.toml" = "tts_summarizer/config.apple-local.example.toml", "src/tts_summarizer/logging.conf" = "tts_summarizer/logging.conf", "hooks/codex/codex_tts.py" = "tts_summarizer/hooks/codex_tts.py", "hooks/claude/claude_tts.py" = "tts_summarizer/hooks/claude_tts.py", "hooks/omp/tts.ts" = "tts_summarizer/hooks/tts.ts" }
 
 [tool.hatch.build.targets.sdist]
 include = [
@@ -37,8 +33,8 @@ include = [
   "README.md",
   "CHANGELOG.md",
   "Makefile",
-    "config.remote.example.toml",
-    "config.apple-local.example.toml",
+  "config.remote.example.toml",
+  "config.apple-local.example.toml",
 ]
 
 [tool.ty.environment]

@@ -29,8 +29,9 @@ class CliCommandTests(unittest.TestCase):
         ffplay_args = popen.call_args_list[1].args[0]
         self.assertEqual(curl_args[-1], "http://127.0.0.9:7777/v1/speak")
         self.assertIn('{"text":"hello world","summarize":true}', curl_args)
-        self.assertEqual(ffplay_args[:4], ["ffplay", "-nodisp", "-autoexit", "-loglevel"])
-
+        self.assertEqual(
+            ffplay_args[:4], ["ffplay", "-nodisp", "-autoexit", "-loglevel"]
+        )
 
     def test_speak_replaces_existing_session_pid_while_playing(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -64,7 +65,6 @@ class CliCommandTests(unittest.TestCase):
         kill.assert_any_call(123, signal.SIGTERM)
         self.assertEqual(seen_during_playback, ["456"])
         self.assertFalse(pid_file.exists())
-
 
     def test_speak_cleans_up_curl_when_player_launch_fails(self):
         with tempfile.TemporaryDirectory() as tmp:
