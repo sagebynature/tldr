@@ -21,7 +21,6 @@ def _log_config(config: Config) -> None:
         ),
         ("tts.profile", config.tts.default_profile),
         ("tts.model", config.tts.profiles[config.tts.default_profile].model),
-        ("audio.backend", config.audio.backend),
     ):
         logger.info("  %s=%s", label, value)
 

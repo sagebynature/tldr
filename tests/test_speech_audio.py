@@ -1,9 +1,6 @@
-import io
 import unittest
-import wave
-
 import tts_summarizer.speech
-from tts_summarizer.audio import chunks_to_wav_bytes, chunks_to_wav_stream
+from tts_summarizer.audio import chunks_to_wav_stream
 from tts_summarizer.config import TtsConfig, TtsProfileConfig
 from tts_summarizer.speech import AudioChunk, SpeechGenerator
 
@@ -16,9 +13,7 @@ class FakeBackend:
 class SpeechAudioTests(unittest.TestCase):
     def test_speech_generator_passes_text(self):
         generator = SpeechGenerator(
-            TtsConfig(
-                profiles={"qwen": TtsProfileConfig(sample_rate=8000)}
-            ),
+            TtsConfig(profiles={"qwen": TtsProfileConfig(sample_rate=8000)}),
             backend=FakeBackend(),
         )
 
@@ -145,38 +140,6 @@ class SpeechAudioTests(unittest.TestCase):
 
         self.assertEqual(sine_waves.shape, (1, 3, 9))
         self.assertEqual(uv.shape, (1, 3, 1))
-
-    def test_chunks_to_wav_bytes_returns_readable_wav(self):
-        body = chunks_to_wav_bytes(
-            [AudioChunk(samples=[0.0, 0.5, -0.5], sample_rate=8000)]
-        )
-
-        self.assertTrue(body.startswith(b"RIFF"))
-        with wave.open(io.BytesIO(body), "rb") as wav:
-            self.assertEqual(wav.getnchannels(), 1)
-            self.assertEqual(wav.getsampwidth(), 2)
-            self.assertEqual(wav.getframerate(), 8000)
-            self.assertEqual(wav.getnframes(), 3)
-
-    def test_chunks_to_wav_bytes_appends_multiple_chunks(self):
-        body = chunks_to_wav_bytes(
-            [
-                AudioChunk(samples=[0.0], sample_rate=8000),
-                AudioChunk(samples=[1.0], sample_rate=8000),
-            ]
-        )
-
-        with wave.open(io.BytesIO(body), "rb") as wav:
-            self.assertEqual(wav.getnframes(), 2)
-
-    def test_chunks_to_wav_bytes_rejects_mixed_sample_rates(self):
-        with self.assertRaises(ValueError):
-            chunks_to_wav_bytes(
-                [
-                    AudioChunk(samples=[0.0], sample_rate=8000),
-                    AudioChunk(samples=[0.0], sample_rate=16000),
-                ]
-            )
 
     def test_chunks_to_wav_stream_yields_header_before_consuming_chunks(self):
         events = []

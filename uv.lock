@@ -1875,7 +1875,6 @@ dependencies = [
     { name = "colorlog" },
     { name = "fastapi" },
     { name = "mlx-audio", marker = "platform_machine == 'arm64' and sys_platform == 'darwin'" },
-    { name = "numpy" },
     { name = "uvicorn" },
 ]
 
@@ -1903,7 +1902,6 @@ requires-dist = [
     { name = "misaki", marker = "extra == 'kokoro'" },
     { name = "mlx-audio", marker = "platform_machine == 'arm64' and sys_platform == 'darwin'" },
     { name = "num2words", marker = "extra == 'kokoro'" },
-    { name = "numpy" },
     { name = "phonemizer-fork", marker = "extra == 'kokoro'" },
     { name = "spacy", marker = "extra == 'kokoro'" },
     { name = "uvicorn" },

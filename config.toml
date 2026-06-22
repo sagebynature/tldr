@@ -35,7 +35,7 @@ Stop after the summary.
 enable_thinking = false
 
 [tts]
-default_profile = "qwen"
+default_profile = "kokoro"
 
 [tts.profiles.qwen]
 model = "mlx-community/Qwen3-TTS-12Hz-1.7B-CustomVoice-8bit"
@@ -56,8 +56,3 @@ sample_rate = 24000
 voice = "af_alloy"
 lang_code = "a"
 speed = 1.3
-
-[audio]
-backend = "auto"                             # auto | ffplay | file
-output_dir = "~/.cache/tts-summarizer/audio"
-save = false

@@ -15,10 +15,6 @@ from .state import read_state
 logger = logging.getLogger(__name__)
 
 
-class ClientError(RuntimeError):
-    pass
-
-
 def post_json(
     url: str, payload: dict[str, object], timeout: float
 ) -> dict[str, object]:

@@ -28,9 +28,7 @@ def state_path(config: Config) -> Path:
 
 
 def config_fingerprint(config: Config) -> str:
-    basis = repr((config.server, config.summarizer, config.tts, config.audio)).encode(
-        "utf-8"
-    )
+    basis = repr((config.server, config.summarizer, config.tts)).encode("utf-8")
     return hashlib.sha256(basis).hexdigest()[:16]
 
 

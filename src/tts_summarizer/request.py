@@ -50,15 +50,6 @@ class SpeechRequest:
             ),
         )
 
-    def to_json(self) -> dict[str, object]:
-        return {
-            "text": self.text,
-            "metadata": self.metadata,
-            "summarize": self.summarize,
-            "tts_profile": self.tts_profile,
-            "summarizer_profile": self.summarizer_profile,
-        }
-
     def session_key(self) -> str:
         return f"{self.caller}:{self.session_id}"
 

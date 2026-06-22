@@ -21,7 +21,7 @@ make build      # uv build
 make test       # uv run python -m unittest discover -s tests -v
 make typecheck  # uvx ty check src tests
 make check      # typecheck, test, then build
-make run        # uv run python -m tts_summarizer serve --config config.example.toml
+make run        # uv run python -m tts_summarizer serve --config config.toml
 ```
 
 Use another config:
@@ -33,7 +33,7 @@ make run CONFIG=/path/to/config.toml
 ## Run the daemon
 
 ```bash
-uv run tts-summarizer serve --config config.example.toml
+uv run tts-summarizer serve --config config.toml
 ```
 
 The daemon binds to `127.0.0.1`, writes its state under the configured `state_dir`, and loads MLX models lazily on first use.
@@ -62,8 +62,8 @@ Use `"summarize": false` to send text directly to TTS.
 ## Check and stop
 
 ```bash
-uv run tts-summarizer health --config config.example.toml
-uv run tts-summarizer stop --config config.example.toml
+uv run tts-summarizer health --config config.toml
+uv run tts-summarizer stop --config config.toml
 ```
 
 ## Config lookup order
@@ -73,15 +73,18 @@ uv run tts-summarizer stop --config config.example.toml
 3. `~/.config/tts-summarizer/config.toml`
 4. built-in defaults
 
-See `config.example.toml` for all model, prompt, server, and audio settings.
+See `config.toml` for model, prompt, and server settings.
 
-Model-specific `mlx-audio` generation arguments belong under `[tts.generate_kwargs]`:
+Model-specific `mlx-audio` generation arguments belong under `[tts.profiles.<name>.generate_kwargs]`:
 
 ```toml
 [tts]
+default_profile = "qwen"
+
+[tts.profiles.qwen]
 model = "mlx-community/Qwen3-TTS-12Hz-1.7B-Base-8bit"
 
-[tts.generate_kwargs]
+[tts.profiles.qwen.generate_kwargs]
 voice = "Chelsie"
 lang_code = "English"
 ```

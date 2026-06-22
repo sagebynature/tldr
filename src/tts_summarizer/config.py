@@ -71,13 +71,6 @@ class TtsConfig:
 
 
 @dataclass(frozen=True)
-class AudioConfig:
-    backend: str = "auto"
-    output_dir: str = "~/.cache/tts-summarizer/audio"
-    save: bool = False
-
-
-@dataclass(frozen=True)
 class LoggingConfig:
     config_file: str = ""
 
@@ -87,7 +80,6 @@ class Config:
     server: ServerConfig = field(default_factory=ServerConfig)
     summarizer: SummarizerConfig = field(default_factory=SummarizerConfig)
     tts: TtsConfig = field(default_factory=TtsConfig)
-    audio: AudioConfig = field(default_factory=AudioConfig)
     logging: LoggingConfig = field(default_factory=LoggingConfig)
     source: Path | None = None
 
@@ -114,7 +106,9 @@ def _merge_summarizer_config(
     valid = {"default_profile", "profiles"}
     unknown = sorted(set(values) - valid)
     if unknown:
-        raise ConfigError(f"unknown config keys for SummarizerConfig: {', '.join(unknown)}")
+        raise ConfigError(
+            f"unknown config keys for SummarizerConfig: {', '.join(unknown)}"
+        )
     profiles = {
         name: _merge_dataclass(SummarizerProfileConfig(), profile)
         for name, profile in values.get("profiles", {}).items()
@@ -125,7 +119,9 @@ def _merge_summarizer_config(
         profiles=profiles or instance.profiles,
     )
     if merged.default_profile not in merged.profiles:
-        raise ConfigError(f"unknown default summarizer profile: {merged.default_profile}")
+        raise ConfigError(
+            f"unknown default summarizer profile: {merged.default_profile}"
+        )
     return merged
 
 
@@ -150,7 +146,7 @@ def _merge_tts_config(instance: TtsConfig, values: dict[str, Any]) -> TtsConfig:
 
 def _apply(raw: dict[str, Any], source: Path | None) -> Config:
     cfg = Config(source=source)
-    allowed = {"server", "summarizer", "tts", "audio", "logging"}
+    allowed = {"server", "summarizer", "tts", "logging"}
     unknown_sections = sorted(set(raw) - allowed)
     if unknown_sections:
         raise ConfigError(f"unknown sections: {', '.join(unknown_sections)}")
@@ -158,7 +154,6 @@ def _apply(raw: dict[str, Any], source: Path | None) -> Config:
         server=_merge_dataclass(cfg.server, raw.get("server", {})),
         summarizer=_merge_summarizer_config(cfg.summarizer, raw.get("summarizer", {})),
         tts=_merge_tts_config(cfg.tts, raw.get("tts", {})),
-        audio=_merge_dataclass(cfg.audio, raw.get("audio", {})),
         logging=_merge_dataclass(cfg.logging, raw.get("logging", {})),
         source=source,
     )

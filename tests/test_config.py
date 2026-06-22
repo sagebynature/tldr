@@ -61,15 +61,6 @@ class ConfigTests(unittest.TestCase):
         )
         self.assertEqual(cfg.summarizer.profiles["fast"].max_words, 25)
 
-    def test_audio_ffplay_backend_config_loads(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp) / "config.toml"
-            path.write_text('[audio]\nbackend = "ffplay"\n', encoding="utf-8")
-
-            cfg = load_config(str(path), cwd=Path(tmp), home=Path(tmp))
-
-        self.assertEqual(cfg.audio.backend, "ffplay")
-
     def test_tts_profiles_config_loads_named_models(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "config.toml"

@@ -2,35 +2,14 @@ from __future__ import annotations
 
 from collections.abc import Iterable as IterableABC
 from typing import Any, Iterable, Iterator, Protocol, cast
-import io
 import math
 import struct
-import wave
 
 from .speech import AudioChunk
 
 
 class SupportsToList(Protocol):
     def tolist(self) -> Any: ...
-
-
-def chunks_to_wav_bytes(chunks: Iterable[AudioChunk]) -> bytes:
-    buffer = io.BytesIO()
-    sample_rate: int | None = None
-    with wave.open(buffer, "wb") as wav:
-        wav.setnchannels(1)
-        wav.setsampwidth(2)
-        for chunk in chunks:
-            if sample_rate is None:
-                sample_rate = chunk.sample_rate
-                wav.setframerate(sample_rate)
-            elif chunk.sample_rate != sample_rate:
-                raise ValueError("all audio chunks must use the same sample_rate")
-            samples = _to_float_list(chunk.samples)
-            wav.writeframes(b"".join(_to_i16(sample) for sample in samples))
-        if sample_rate is None:
-            wav.setframerate(8000)
-    return buffer.getvalue()
 
 
 def chunks_to_wav_stream(
