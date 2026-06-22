@@ -678,6 +678,7 @@ class HookInstallerTests(unittest.TestCase):
 
             self.assertTrue(installed.exists())
             self.assertTrue(os.access(installed, os.X_OK))
+            self.assertIn("post_llm_call", installed.read_text(encoding="utf-8"))
             self.assertTrue((home / ".hermes" / "tts.enabled").exists())
             self.assertIn("model: qwen\n", config)
             self.assertIn("hooks:\n", config)
