@@ -213,6 +213,21 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("/v1/summarize", response.json()["paths"])
 
+    def test_fastapi_openapi_schema_has_concrete_request_bodies(self):
+        service = TtsService(Config(), summarizer=FakeSummarizer(), speech=FakeSpeech(), player=FakePlayer())
+        client = TestClient(create_app(Config(), service=service))
+
+        schema = client.get("/openapi.json").json()
+        components = schema["components"]["schemas"]
+        self.assertIn("SpeakRequestBody", components)
+        self.assertIn("SummarizeRequestBody", components)
+        self.assertIn("SummarizeResponseBody", components)
+        self.assertIn("text", components["SpeakRequestBody"]["properties"])
+        self.assertIn("session_id", components["SpeakRequestBody"]["properties"])
+        self.assertIn("max_words", components["SummarizeRequestBody"]["properties"])
+        self.assertNotIn("model", components["SummarizeRequestBody"]["properties"])
+        self.assertIn("summary", components["SummarizeResponseBody"]["properties"])
+
     def test_fastapi_health_route(self):
         service = TtsService(Config(), summarizer=FakeSummarizer(), speech=FakeSpeech(), player=FakePlayer())
         client = TestClient(create_app(Config(), service=service))

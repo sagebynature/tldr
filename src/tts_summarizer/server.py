@@ -10,6 +10,7 @@ import threading
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel, ConfigDict
 import uvicorn
 
 from .audio import AudioPlayer
@@ -110,6 +111,31 @@ class TtsService:
         return {"status": "ok", "pid": os.getpid()}
 
 
+class SpeakRequestBody(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    text: str
+    caller: str | None = None
+    session_id: str | None = None
+    event: str | None = None
+    metadata: dict[str, object] | None = None
+
+
+class SummarizeRequestBody(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    text: str
+    word_threshold: int | None = None
+    max_words: int | None = None
+    temperature: float | None = None
+    max_tokens: int | None = None
+
+
+class SummarizeResponseBody(BaseModel):
+    summary: str
+    changed: bool
+
+
 SUMMARY_OVERRIDE_KEYS = {
     "word_threshold",
     "max_words",
@@ -155,17 +181,17 @@ def create_app(config: Config, service: TtsService | None = None) -> FastAPI:
         return service.health()
 
     @app.post("/v1/speak")
-    def speak(payload: dict[str, object]):
+    def speak(payload: SpeakRequestBody):
         try:
-            request = SpeechRequest.from_json(payload)
+            request = SpeechRequest.from_json(payload.model_dump(exclude_none=True))
         except RequestError as exc:
             return JSONResponse(status_code=400, content={"error": str(exc)})
         return service.handle(request)
 
-    @app.post("/v1/summarize")
-    def summarize(payload: dict[str, object]):
+    @app.post("/v1/summarize", response_model=SummarizeResponseBody)
+    def summarize(payload: SummarizeRequestBody):
         try:
-            text, summarizer_config = _summary_request(payload, config)
+            text, summarizer_config = _summary_request(payload.model_dump(exclude_none=True), config)
         except RequestError as exc:
             return JSONResponse(status_code=400, content={"error": str(exc)})
         backend = getattr(service.summarizer, "backend", None)
