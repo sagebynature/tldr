@@ -13,9 +13,9 @@ cross_session_policy = "queue" # queue | mix | interrupt_all
 
 [summarizer]
 enabled = true
-base_url = "http://127.0.0.1:1234/v1"
-api_key = ""
-model = "local-model"
+base_url = "http://127.0.0.1:9000/v1"
+api_key = "omlx"
+model = "mlx-community/Qwen3-0.6B-4bit"
 word_threshold = 0
 max_words = 40
 temperature = 0.2
