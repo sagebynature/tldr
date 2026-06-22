@@ -1,8 +1,9 @@
 import unittest
+import json
 import tts_summarizer.speech
 from tts_summarizer.audio import chunks_to_wav_stream
 from tts_summarizer.config import TtsConfig, TtsProfileConfig
-from tts_summarizer.speech import AudioChunk, SpeechGenerator
+from tts_summarizer.speech import AudioBytes, AudioChunk, RemoteTtsBackend, SpeechGenerator
 
 
 class FakeBackend:
@@ -11,6 +12,84 @@ class FakeBackend:
 
 
 class SpeechAudioTests(unittest.TestCase):
+    def test_remote_tts_backend_posts_openai_audio_speech_request(self):
+        calls = []
+
+        class Response:
+            def __init__(self):
+                self._chunks = [b"RIFFremote", b""]
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return None
+
+            def read(self, _size=-1):
+                return self._chunks.pop(0)
+
+        def fake_urlopen(request, timeout):
+            calls.append((request, timeout))
+            return Response()
+
+        config = TtsProfileConfig(
+            backend="remote",
+            base_url="http://127.0.0.1:9100/v1/",
+            api_key="omlx",
+            model="mlx-community/Kokoro-82M-bf16",
+            stream=True,
+            generate_kwargs={"voice": "af_heart", "response_format": "mp3"},
+        )
+
+        output = RemoteTtsBackend(urlopen=fake_urlopen, timeout=7).generate("hello", config)
+        self.assertIsInstance(output, AudioBytes)
+        self.assertEqual(b"".join(output.chunks), b"RIFFremote")
+
+        request, timeout = calls[0]
+        body = json.loads(request.data.decode("utf-8"))
+        self.assertEqual(request.full_url, "http://127.0.0.1:9100/v1/audio/speech")
+        self.assertEqual(timeout, 7)
+        self.assertEqual(request.get_method(), "POST")
+        self.assertEqual(request.headers["Content-type"], "application/json")
+        self.assertEqual(request.headers["Authorization"], "Bearer omlx")
+        self.assertEqual(body["model"], "mlx-community/Kokoro-82M-bf16")
+        self.assertEqual(body["input"], "hello")
+        self.assertIs(body["stream"], True)
+        self.assertEqual(body["voice"], "af_heart")
+        self.assertEqual(body["response_format"], "wav")
+
+    def test_remote_tts_backend_omits_empty_authorization(self):
+        headers = []
+
+        class Response:
+            def __init__(self):
+                self._chunks = [b"RIFF", b""]
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return None
+
+            def read(self, _size=-1):
+                return self._chunks.pop(0)
+
+        def fake_urlopen(request, timeout):
+            headers.append(request.headers)
+            return Response()
+
+        config = TtsProfileConfig(
+            backend="remote",
+            base_url="http://127.0.0.1:9100/v1",
+            api_key="",
+            model="model",
+        )
+
+        output = RemoteTtsBackend(urlopen=fake_urlopen).generate("hello", config)
+
+        self.assertEqual(b"".join(output.chunks), b"RIFF")
+        self.assertNotIn("Authorization", headers[0])
+
     def test_speech_generator_passes_text(self):
         generator = SpeechGenerator(
             TtsConfig(profiles={"qwen": TtsProfileConfig(sample_rate=8000)}),

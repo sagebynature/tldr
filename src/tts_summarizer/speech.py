@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from collections.abc import Iterable
+import json
 import logging
 from typing import Any, Protocol, cast
+from urllib.request import Request, urlopen
 
 from .config import TtsConfig, TtsProfileConfig
 
@@ -16,9 +18,17 @@ class AudioChunk:
     samples: object
     sample_rate: int
 
+@dataclass(frozen=True)
+class AudioBytes:
+    chunks: Iterable[bytes]
+    content_type: str = "audio/wav"
+
+
+SpeechOutput = Iterable[AudioChunk] | AudioBytes
+
 
 class SpeechBackend(Protocol):
-    def generate(self, text: str, config: TtsProfileConfig) -> Iterable[AudioChunk]: ...
+    def generate(self, text: str, config: TtsProfileConfig) -> SpeechOutput: ...
 
 
 def _patch_kokoro_sinegen() -> None:
@@ -97,6 +107,43 @@ class MlxAudioBackend:
         )
 
 
+class RemoteTtsBackend:
+    def __init__(self, urlopen: Any = urlopen, timeout: float = 30):
+        self.urlopen = urlopen
+        self.timeout = timeout
+
+    def generate(self, text: str, config: TtsProfileConfig) -> AudioBytes:
+        if not config.base_url:
+            raise ValueError("remote TTS profile requires base_url")
+        body = {
+            "model": config.model,
+            "input": text,
+            "stream": config.stream,
+            **config.generate_kwargs,
+            "response_format": "wav",
+        }
+        body_bytes = json.dumps(body).encode("utf-8")
+        headers = {"Content-Type": "application/json"}
+        if config.api_key:
+            headers["Authorization"] = f"Bearer {config.api_key}"
+        request = Request(
+            f"{config.base_url.rstrip('/')}/audio/speech",
+            data=body_bytes,
+            headers=headers,
+            method="POST",
+        )
+
+        def chunks() -> Iterable[bytes]:
+            with cast(Any, self.urlopen(request, timeout=self.timeout)) as response:
+                while True:
+                    chunk = response.read(64 * 1024)
+                    if not chunk:
+                        break
+                    yield chunk
+
+        return AudioBytes(chunks())
+
+
 class SpeechGenerator:
     def __init__(self, config: TtsConfig, backend: SpeechBackend | None = None):
         self.config = config
@@ -114,5 +161,5 @@ class SpeechGenerator:
 
     def generate(
         self, text: str, profile_name: str | None = None
-    ) -> Iterable[AudioChunk]:
+    ) -> SpeechOutput:
         return self.backend.generate(text, self.profile(profile_name))
