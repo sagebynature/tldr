@@ -374,6 +374,91 @@ class HermesHookTests(unittest.TestCase):
             ],
         )
         self.assertEqual(call["stdin"], "")
+
+    def test_hermes_hook_falls_back_to_conversation_history(self):
+        with tempfile.TemporaryDirectory() as tmp_name:
+            call, _result = self._run_hermes_hook(
+                Path(tmp_name),
+                {
+                    "hook_event_name": "post_llm_call",
+                    "session_id": "fallback-session",
+                    "extra": {
+                        "conversation_history": [
+                            {"role": "user", "content": "ignore"},
+                            {
+                                "role": "assistant",
+                                "content": [
+                                    {"type": "text", "text": "Fallback "},
+                                    {"type": "text", "text": "Hermes text."},
+                                ],
+                            },
+                        ],
+                    },
+                },
+            )
+
+        self.assertEqual(
+            call["argv"],
+            ["speak", "--session_id", "hermes:fallback-session", "Fallback Hermes text."],
+        )
+
+    def test_hermes_hook_ignores_other_events(self):
+        with tempfile.TemporaryDirectory() as tmp_name:
+            tmp = Path(tmp_name)
+            capture = stub_tts(tmp)
+            result = subprocess.run(
+                [str(HERMES_HOOK)],
+                input=json.dumps(
+                    {
+                        "hook_event_name": "pre_llm_call",
+                        "session_id": "wrong-event",
+                        "extra": {"assistant_response": "Do not speak."},
+                    }
+                ),
+                text=True,
+                capture_output=True,
+                check=True,
+                env=self._hook_env(tmp),
+                cwd=ROOT,
+            )
+
+            self.assertEqual(result.stdout, "{}\n")
+            self.assertFalse(capture.exists())
+
+    def test_hermes_hook_exits_before_speech_finishes(self):
+        with tempfile.TemporaryDirectory() as tmp_name:
+            tmp = Path(tmp_name)
+            capture = stub_tts(tmp, delay=1.5)
+            started = tmp / "tts-started"
+            started_at = time.monotonic()
+            result = subprocess.run(
+                [str(HERMES_HOOK)],
+                input=json.dumps(
+                    {
+                        "hook_event_name": "post_llm_call",
+                        "session_id": "slow-session",
+                        "extra": {"assistant_response": "Slow Hermes speech"},
+                    }
+                ),
+                text=True,
+                capture_output=True,
+                check=True,
+                env=self._hook_env(tmp),
+                cwd=ROOT,
+                timeout=0.5,
+            )
+            elapsed = time.monotonic() - started_at
+
+            deadline = time.monotonic() + 1
+            while time.monotonic() < deadline and not started.exists():
+                time.sleep(0.05)
+
+            self.assertEqual(result.stdout, "{}\n")
+            self.assertLess(elapsed, 1)
+            self.assertTrue(started.exists())
+            self.assertFalse(capture.exists())
+
+
 class HookInstallerTests(unittest.TestCase):
     def test_cli_install_codex_hook_creates_idempotent_python_stop_entry(self):
         with tempfile.TemporaryDirectory() as tmp_name:
