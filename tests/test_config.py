@@ -93,6 +93,39 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(cfg.tts.profiles["qwen"].generate_kwargs["voice"], "Aiden")
         self.assertEqual(cfg.tts.profiles["kokoro"].generate_kwargs["speed"], 1.6)
 
+
+    def test_tts_remote_profile_config_loads_endpoint_fields(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "config.toml"
+            path.write_text(
+                "\n".join(
+                    [
+                        "[tts]",
+                        'default_profile = "remote"',
+                        "[tts.profiles.remote]",
+                        'backend = "remote"',
+                        'base_url = "http://127.0.0.1:9100/v1"',
+                        'api_key = "omlx"',
+                        'model = "mlx-community/Kokoro-82M-bf16"',
+                        "sample_rate = 24000",
+                        "[tts.profiles.remote.generate_kwargs]",
+                        'voice = "af_heart"',
+                        'response_format = "wav"',
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            cfg = load_config(str(path), cwd=Path(tmp), home=Path(tmp))
+
+        profile = cfg.tts.profiles["remote"]
+        self.assertEqual(profile.backend, "remote")
+        self.assertEqual(profile.base_url, "http://127.0.0.1:9100/v1")
+        self.assertEqual(profile.api_key, "omlx")
+        self.assertEqual(profile.model, "mlx-community/Kokoro-82M-bf16")
+        self.assertEqual(profile.generate_kwargs["voice"], "af_heart")
+        self.assertEqual(profile.generate_kwargs["response_format"], "wav")
+
     def test_cwd_config_beats_user_config(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

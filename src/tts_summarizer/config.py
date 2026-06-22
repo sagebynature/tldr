@@ -58,6 +58,9 @@ class TtsProfileConfig:
     stream: bool = True
     sample_rate: int = 24000
     generate_kwargs: dict[str, object] = field(default_factory=dict)
+    backend: str = "mlx"
+    base_url: str = ""
+    api_key: str = ""
 
 
 @dataclass(frozen=True)
