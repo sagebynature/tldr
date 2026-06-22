@@ -1,0 +1,8 @@
+services:
+  tts-summarizer:
+    build: .
+    command: ["tts-summarizer", "serve", "--config", "/config/config.toml"]
+    ports:
+      - "9200:9200"
+    volumes:
+      - ./config.toml:/config/config.toml:ro
