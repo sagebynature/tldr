@@ -14,7 +14,7 @@ import uvicorn
 from .audio import chunks_to_wav_stream
 from .config import Config
 from .request import RequestError, SpeechRequest
-from .speech import SpeechGenerator
+from .speech import AudioBytes, SpeechGenerator
 from .state import write_state
 from .summarizer import Summarizer
 
@@ -56,6 +56,12 @@ SUMMARY_OVERRIDE_KEYS = {
 }
 
 
+def _speech_output_to_wav_stream(output, sample_rate: int) -> Iterable[bytes]:
+    if isinstance(output, AudioBytes):
+        return output.chunks
+    return chunks_to_wav_stream(output, sample_rate)
+
+
 def synthesize_speech(request: SpeechRequest, summarizer, speech) -> Iterable[bytes]:
     logger.info("incoming text session=%s text=%r", request.session_key(), request.text)
     if request.summarize:
@@ -84,9 +90,8 @@ def synthesize_speech(request: SpeechRequest, summarizer, speech) -> Iterable[by
         if hasattr(speech, "sample_rate")
         else getattr(getattr(speech, "config", None), "sample_rate", 8000)
     )
-    return chunks_to_wav_stream(
-        speech.generate(text, profile_name=request.tts_profile), sample_rate
-    )
+    output = speech.generate(text, profile_name=request.tts_profile)
+    return _speech_output_to_wav_stream(output, sample_rate)
 
 
 def _summary_request(payload: dict[str, object], config: Config):

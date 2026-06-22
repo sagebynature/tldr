@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 
 from tts_summarizer.config import Config, SummarizerConfig, SummarizerProfileConfig
 from tts_summarizer.server import create_app, run_server
-from tts_summarizer.speech import AudioChunk
+from tts_summarizer.speech import AudioBytes, AudioChunk
 from tts_summarizer.summarizer import Summarizer
 
 
@@ -27,6 +27,13 @@ class CapturingSpeech:
         self.text = text
         self.profile_name = profile_name
         return [AudioChunk(samples=[0.0], sample_rate=8000)]
+
+class RemoteSpeech:
+    def sample_rate(self, profile_name=None):
+        return 24000
+
+    def generate(self, text, profile_name=None):
+        return AudioBytes([b"RIFFremote-wav"])
 
 
 class ServerTests(unittest.TestCase):
@@ -158,6 +165,17 @@ class ServerTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertNotIn("content-length", response.headers)
+
+    def test_fastapi_speak_route_passes_remote_wav_bytes_through(self):
+        client = TestClient(
+            create_app(Config(), summarizer=FakeSummarizer(), speech=RemoteSpeech())
+        )
+
+        response = client.post("/v1/speak", json={"text": "hello"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["content-type"], "audio/wav")
+        self.assertEqual(response.content, b"RIFFremote-wav")
 
     def test_fastapi_speak_route_summarizes_by_default(self):
         speech = CapturingSpeech()
