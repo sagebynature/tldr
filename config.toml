@@ -40,7 +40,7 @@ Keep the same voice and intent, just shorter.
 enable_thinking = false
 
 [tts]
-default_profile = "remote-kokoro"
+default_profile = "remote-qwen"
 
 [tts.profiles.qwen]
 model = "mlx-community/Qwen3-TTS-12Hz-1.7B-CustomVoice-8bit"

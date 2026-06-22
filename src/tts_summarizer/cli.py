@@ -36,8 +36,13 @@ def _load_speak_config(path: str | None) -> Config:
         return load_config(str(default))
     return load_config(None)
 
+
 def _session_pid_path(config: Config, session_id: str) -> Path:
-    return Path(config.server.state_dir).expanduser() / "sessions" / f"{quote(session_id, safe='')}.pid"
+    return (
+        Path(config.server.state_dir).expanduser()
+        / "sessions"
+        / f"{quote(session_id, safe='')}.pid"
+    )
 
 
 def _pid_alive(pid: int) -> bool:
@@ -109,7 +114,15 @@ def _speak(args: argparse.Namespace) -> int:
     if args.session_id:
         curl_args.extend(["-H", f"X-TTS-Session-Id: {args.session_id}"])
     curl_args.extend(["-d", body, f"http://{host}:{port}/v1/speak"])
-    ffplay_args = ["ffplay", "-nodisp", "-autoexit", "-loglevel", "error", "-i", "pipe:0"]
+    ffplay_args = [
+        "ffplay",
+        "-nodisp",
+        "-autoexit",
+        "-loglevel",
+        "error",
+        "-i",
+        "pipe:0",
+    ]
 
     if args.session_id:
         _stop_session(config, args.session_id)
@@ -162,7 +175,9 @@ def build_parser() -> argparse.ArgumentParser:
     stop.add_argument("--config")
 
     install = subcommands.add_parser("install")
-    install.add_argument("--harness", choices=["codex", "claude", "omp"], required=True)
+    install.add_argument(
+        "--harness", choices=["codex", "claude", "omp", "pi"], required=True
+    )
 
     speak = subcommands.add_parser("speak")
     speak.add_argument("--config")

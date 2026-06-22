@@ -77,7 +77,9 @@ class CodexHookTests(unittest.TestCase):
         )
         return env
 
-    def _run_codex_hook(self, tmp: Path, payload: dict[str, object]) -> dict[str, object]:
+    def _run_codex_hook(
+        self, tmp: Path, payload: dict[str, object]
+    ) -> dict[str, object]:
         capture = stub_tts(tmp)
         subprocess.run(
             [str(CODEX_HOOK)],
@@ -101,7 +103,12 @@ class CodexHookTests(unittest.TestCase):
 
         self.assertEqual(
             call["argv"],
-            ["speak", "--session_id", "codex-session-123", "Implemented the Codex hook."],
+            [
+                "speak",
+                "--session_id",
+                "codex-session-123",
+                "Implemented the Codex hook.",
+            ],
         )
         self.assertEqual(call["stdin"], "")
 
@@ -132,7 +139,10 @@ class CodexHookTests(unittest.TestCase):
                                     "type": "message",
                                     "role": "assistant",
                                     "content": [
-                                        {"type": "output_text", "text": "Final answer text"}
+                                        {
+                                            "type": "output_text",
+                                            "text": "Final answer text",
+                                        }
                                     ],
                                     "phase": "final_answer",
                                 },
@@ -201,7 +211,9 @@ class ClaudeHookTests(unittest.TestCase):
         )
         return env
 
-    def _run_claude_hook(self, tmp: Path, payload: dict[str, object]) -> dict[str, object]:
+    def _run_claude_hook(
+        self, tmp: Path, payload: dict[str, object]
+    ) -> dict[str, object]:
         capture = stub_tts(tmp)
         subprocess.run(
             [str(CLAUDE_HOOK)],
@@ -226,7 +238,12 @@ class ClaudeHookTests(unittest.TestCase):
 
         self.assertEqual(
             call["argv"],
-            ["speak", "--session_id", "claude-session-123", "Implemented the Claude hook."],
+            [
+                "speak",
+                "--session_id",
+                "claude-session-123",
+                "Implemented the Claude hook.",
+            ],
         )
         self.assertEqual(call["stdin"], "")
 
@@ -299,7 +316,9 @@ class ClaudeHookTests(unittest.TestCase):
                     timeout=0.5,
                 )
             except subprocess.TimeoutExpired:
-                self.fail("Claude hook waited for tts-summarizer instead of spawning it")
+                self.fail(
+                    "Claude hook waited for tts-summarizer instead of spawning it"
+                )
 
             self.assertFalse(capture.exists())
             call = read_json_when_ready(capture)
@@ -384,7 +403,9 @@ class HookInstallerTests(unittest.TestCase):
             finally:
                 restore_home_and_path(old_home, old_path)
 
-            hooks = json.loads((home / ".codex" / "hooks.json").read_text(encoding="utf-8"))
+            hooks = json.loads(
+                (home / ".codex" / "hooks.json").read_text(encoding="utf-8")
+            )
             command = hooks["hooks"]["Stop"][0]["hooks"][0]["command"]
             env = os.environ.copy()
             env.update(
@@ -435,13 +456,16 @@ class HookInstallerTests(unittest.TestCase):
             finally:
                 restore_home_and_path(old_home, old_path)
 
-            settings = json.loads((claude_dir / "settings.json").read_text(encoding="utf-8"))
+            settings = json.loads(
+                (claude_dir / "settings.json").read_text(encoding="utf-8")
+            )
             stop_entries = settings["hooks"]["Stop"]
             matching = [
                 entry
                 for entry in stop_entries
                 for hook in entry.get("hooks", [])
-                if hook.get("command") == "python3" and hook.get("args") == [str(installed)]
+                if hook.get("command") == "python3"
+                and hook.get("args") == [str(installed)]
             ]
 
             self.assertEqual(settings["theme"], "dark")
@@ -464,7 +488,9 @@ class HookInstallerTests(unittest.TestCase):
             finally:
                 restore_home_and_path(old_home, old_path)
 
-            settings = json.loads((home / ".claude" / "settings.json").read_text(encoding="utf-8"))
+            settings = json.loads(
+                (home / ".claude" / "settings.json").read_text(encoding="utf-8")
+            )
             hook = settings["hooks"]["Stop"][0]["hooks"][0]
             env = os.environ.copy()
             env.update(
@@ -497,12 +523,13 @@ class HookInstallerTests(unittest.TestCase):
             )
 
 
-
-
 class OmpHookTests(unittest.TestCase):
     def _write_node_runner(self, tmp: Path, entries: list[dict[str, object]]) -> Path:
         hook_mjs = tmp / "omp_tts.mjs"
-        hook_mjs.write_text((ROOT / "hooks" / "omp" / "omp_tts.ts").read_text(encoding="utf-8"), encoding="utf-8")
+        hook_mjs.write_text(
+            (ROOT / "hooks" / "omp" / "tts.ts").read_text(encoding="utf-8"),
+            encoding="utf-8",
+        )
         runner = tmp / "run-omp-hook.mjs"
         runner.write_text(
             "\n".join(
@@ -553,10 +580,15 @@ class OmpHookTests(unittest.TestCase):
                 }
             )
 
-            subprocess.run(["node", str(runner)], check=True, cwd=tmp, env=env, timeout=1)
+            subprocess.run(
+                ["node", str(runner)], check=True, cwd=tmp, env=env, timeout=1
+            )
             call = read_json_when_ready(capture)
 
-            self.assertEqual(call["argv"], ["speak", "--session_id", "omp-session-123", "OMP final answer"])
+            self.assertEqual(
+                call["argv"],
+                ["speak", "--session_id", "omp-session-123", "OMP final answer"],
+            )
             self.assertEqual(call["stdin"], "")
 
     def test_omp_hook_exits_before_speech_finishes(self):
@@ -578,10 +610,15 @@ class OmpHookTests(unittest.TestCase):
             env = os.environ.copy()
             env["OMP_TTS_BIN"] = str(tmp / "bin" / "tts-summarizer")
 
-            subprocess.run(["node", str(runner)], check=True, cwd=tmp, env=env, timeout=0.5)
+            subprocess.run(
+                ["node", str(runner)], check=True, cwd=tmp, env=env, timeout=0.5
+            )
             call = read_json_when_ready(capture)
 
-            self.assertEqual(call["argv"], ["speak", "--session_id", "omp:/repo/demo", "Slow OMP speech"])
+            self.assertEqual(
+                call["argv"],
+                ["speak", "--session_id", "omp:/repo/demo", "Slow OMP speech"],
+            )
 
     def test_cli_install_omp_hook_copies_global_hook_file(self):
         with tempfile.TemporaryDirectory() as tmp_name:
@@ -593,9 +630,23 @@ class OmpHookTests(unittest.TestCase):
             finally:
                 restore_home_and_path(old_home, old_path)
 
-            installed = home / ".omp" / ".agent" / "extensions" / "tts-summarizer.ts"
+            installed = home / ".omp" / "agent" / "extensions" / "tts-summarizer.ts"
             self.assertTrue(installed.exists())
             self.assertIn("turn_end", installed.read_text(encoding="utf-8"))
+
+    def test_cli_install_pi_agent_alias_copies_global_extension_file(self):
+        with tempfile.TemporaryDirectory() as tmp_name:
+            home = Path(tmp_name)
+            old_home, old_path = with_home_and_path(home, os.environ["PATH"])
+            try:
+                self.assertEqual(cli.main(["install", "--harness", "pi"]), 0)
+            finally:
+                restore_home_and_path(old_home, old_path)
+
+            installed = home / ".pi" / "agent" / "extensions" / "tts-summarizer.ts"
+            self.assertTrue(installed.exists())
+            self.assertIn("turn_end", installed.read_text(encoding="utf-8"))
+
 
 if __name__ == "__main__":
     unittest.main()

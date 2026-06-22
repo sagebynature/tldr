@@ -10,13 +10,16 @@ from typing import Any
 HOOK_FILENAMES = {
     "codex": "codex_tts.py",
     "claude": "claude_tts.py",
-    "omp": "omp_tts.ts",
+    "omp": "tts.ts",
+    "pi": "tts.ts",
 }
 
 
 def _copy_hook(harness: str, destination: Path) -> None:
     filename = HOOK_FILENAMES[harness]
-    source_tree_hook = Path(__file__).resolve().parents[2] / "hooks" / harness / filename
+    source_tree_hook = (
+        Path(__file__).resolve().parents[2] / "hooks" / harness / filename
+    )
     if source_tree_hook.is_file():
         shutil.copyfile(source_tree_hook, destination)
         return
@@ -55,7 +58,9 @@ def _is_hook_for_script(hook: Any, installed_hook: Path) -> bool:
     return bool(parts) and parts[-1] == installed
 
 
-def _remove_existing_tts_hooks(stop_entries: list[Any], installed_hook: Path) -> list[Any]:
+def _remove_existing_tts_hooks(
+    stop_entries: list[Any], installed_hook: Path
+) -> list[Any]:
     cleaned: list[Any] = []
     for entry in stop_entries:
         if not isinstance(entry, dict):
@@ -65,7 +70,9 @@ def _remove_existing_tts_hooks(stop_entries: list[Any], installed_hook: Path) ->
         if not isinstance(hooks, list):
             cleaned.append(entry)
             continue
-        entry["hooks"] = [hook for hook in hooks if not _is_hook_for_script(hook, installed_hook)]
+        entry["hooks"] = [
+            hook for hook in hooks if not _is_hook_for_script(hook, installed_hook)
+        ]
         if entry["hooks"]:
             cleaned.append(entry)
     return cleaned
@@ -161,6 +168,15 @@ def _install_omp(home: Path) -> Path:
     return installed_hook
 
 
+def _install_pi(home: Path) -> Path:
+    install_dir = home / ".pi" / "agent" / "extensions"
+    installed_hook = install_dir / "tts-summarizer.ts"
+
+    install_dir.mkdir(parents=True, exist_ok=True)
+    _copy_hook("pi", installed_hook)
+    return installed_hook
+
+
 def install_hook(harness: str, home: Path | None = None) -> Path:
     root = home or Path.home()
     if harness == "codex":
@@ -169,4 +185,6 @@ def install_hook(harness: str, home: Path | None = None) -> Path:
         return _install_claude(root)
     if harness == "omp":
         return _install_omp(root)
+    if harness == "pi":
+        return _install_pi(root)
     raise ValueError(f"unsupported harness: {harness}")

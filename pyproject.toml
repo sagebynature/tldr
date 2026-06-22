@@ -9,11 +9,7 @@ description = "Harness-neutral local TTS summarizer daemon using MLX"
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [{ name = "sagebynature" }]
-dependencies = [
-  "colorlog>=6.10.1",
-  "fastapi",
-  "uvicorn",
-]
+dependencies = ["colorlog>=6.10.1", "fastapi", "uvicorn"]
 
 [project.optional-dependencies]
 mlx = ["mlx-audio; platform_system == 'Darwin' and platform_machine == 'arm64'"]
@@ -27,17 +23,10 @@ tts-summarizer = "tts_summarizer.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/tts_summarizer"]
-force-include = { "src/tts_summarizer/logging.conf" = "tts_summarizer/logging.conf", "hooks/codex/codex_tts.py" = "tts_summarizer/hooks/codex_tts.py", "hooks/claude/claude_tts.py" = "tts_summarizer/hooks/claude_tts.py", "hooks/omp/omp_tts.ts" = "tts_summarizer/hooks/omp_tts.ts" }
+force-include = { "src/tts_summarizer/logging.conf" = "tts_summarizer/logging.conf", "hooks/codex/codex_tts.py" = "tts_summarizer/hooks/codex_tts.py", "hooks/claude/claude_tts.py" = "tts_summarizer/hooks/claude_tts.py", "hooks/omp/tts.ts" = "tts_summarizer/hooks/tts.ts" }
 
 [tool.hatch.build.targets.sdist]
-include = [
-  "src",
-  "hooks",
-  "tests",
-  "README.md",
-  "CHANGELOG.md",
-  "Makefile",
-]
+include = ["src", "hooks", "tests", "README.md", "CHANGELOG.md", "Makefile"]
 
 [tool.ty.environment]
 root = ["src"]
