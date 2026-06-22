@@ -28,6 +28,7 @@ class CapturingSpeech:
         self.profile_name = profile_name
         return [AudioChunk(samples=[0.0], sample_rate=8000)]
 
+
 class RemoteSpeech:
     def sample_rate(self, profile_name=None):
         return 24000
@@ -311,7 +312,9 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(backend.config.max_words, 12)
         self.assertEqual(backend.config.temperature, 0.7)
         self.assertEqual(backend.config.max_tokens, 33)
-        default_summary = Config().summarizer.profiles[Config().summarizer.default_profile]
+        default_summary = Config().summarizer.profiles[
+            Config().summarizer.default_profile
+        ]
         self.assertEqual(backend.config.model, default_summary.model)
         self.assertIn("supplied URL", backend.messages[-1]["content"])
 

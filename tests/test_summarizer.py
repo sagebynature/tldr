@@ -36,7 +36,9 @@ class SummarizerTests(unittest.TestCase):
 
     def test_replace_urls_replaces_case_insensitive_http_schemes(self):
         self.assertEqual(
-            replace_urls("Open HTTPS://private.example/token and Http://Example.test/path"),
+            replace_urls(
+                "Open HTTPS://private.example/token and Http://Example.test/path"
+            ),
             "Open supplied URL and supplied URL",
         )
 
@@ -143,7 +145,9 @@ class SummarizerTests(unittest.TestCase):
             def generate(self, messages, config):
                 return "<think>private reasoning</think>spoken result"
 
-        summarizer = Summarizer(summary_config(word_threshold=0), backend=ThinkingBackend())
+        summarizer = Summarizer(
+            summary_config(word_threshold=0), backend=ThinkingBackend()
+        )
         self.assertEqual(summarizer.summarize("actual request text"), "spoken result")
 
     def test_thinking_only_output_falls_back_to_original_text(self):
@@ -151,7 +155,9 @@ class SummarizerTests(unittest.TestCase):
             def generate(self, messages, config):
                 return "<think>unfinished reasoning"
 
-        summarizer = Summarizer(summary_config(word_threshold=0), backend=ThinkingBackend())
+        summarizer = Summarizer(
+            summary_config(word_threshold=0), backend=ThinkingBackend()
+        )
         self.assertEqual(
             summarizer.summarize("actual request text"), "actual request text"
         )
@@ -292,7 +298,9 @@ class SummarizerTests(unittest.TestCase):
             def generate(self, messages, config):
                 raise RuntimeError("boom")
 
-        summarizer = Summarizer(summary_config(word_threshold=0), backend=BrokenBackend())
+        summarizer = Summarizer(
+            summary_config(word_threshold=0), backend=BrokenBackend()
+        )
 
         with patch("tts_summarizer.summarizer.logger"):
             self.assertEqual(summarizer.summarize("keep this"), "keep this")

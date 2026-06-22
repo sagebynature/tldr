@@ -29,7 +29,9 @@ class OpenAICompatibleBackend:
         self.urlopen = urlopen
         self.timeout = timeout
 
-    def generate(self, messages: list[dict[str, str]], config: SummarizerProfileConfig) -> str:
+    def generate(
+        self, messages: list[dict[str, str]], config: SummarizerProfileConfig
+    ) -> str:
         token_limits = (config.max_tokens, config.max_tokens * 2)
         content = ""
         for max_tokens in token_limits:
@@ -38,11 +40,16 @@ class OpenAICompatibleBackend:
             content = str(choice["message"]["content"])
             if choice.get("finish_reason") != "length":
                 return content
-            logger.warning("summary hit max_tokens=%s; retrying with larger limit", max_tokens)
+            logger.warning(
+                "summary hit max_tokens=%s; retrying with larger limit", max_tokens
+            )
         return content
 
     def _post_completion(
-        self, messages: list[dict[str, str]], config: SummarizerProfileConfig, max_tokens: int
+        self,
+        messages: list[dict[str, str]],
+        config: SummarizerProfileConfig,
+        max_tokens: int,
     ):
         url = f"{config.base_url.rstrip('/')}/chat/completions"
         body = {
@@ -67,7 +74,9 @@ class Summarizer:
         self.backend = backend or OpenAICompatibleBackend()
 
     def profile(
-        self, profile_name: str | None = None, overrides: dict[str, object] | None = None
+        self,
+        profile_name: str | None = None,
+        overrides: dict[str, object] | None = None,
     ) -> SummarizerProfileConfig:
         name = profile_name or self.config.default_profile
         try:

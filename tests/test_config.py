@@ -93,7 +93,6 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(cfg.tts.profiles["qwen"].generate_kwargs["voice"], "Aiden")
         self.assertEqual(cfg.tts.profiles["kokoro"].generate_kwargs["speed"], 1.6)
 
-
     def test_tts_remote_profile_config_loads_endpoint_fields(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "config.toml"

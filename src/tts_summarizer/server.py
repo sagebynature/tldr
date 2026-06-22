@@ -95,7 +95,9 @@ def synthesize_speech(request: SpeechRequest, summarizer, speech) -> Iterable[by
 
 
 def _summary_request(payload: dict[str, object], config: Config):
-    unknown = sorted(set(payload) - (SUMMARY_OVERRIDE_KEYS | {"text", "summarizer_profile"}))
+    unknown = sorted(
+        set(payload) - (SUMMARY_OVERRIDE_KEYS | {"text", "summarizer_profile"})
+    )
     if unknown:
         raise RequestError(f"unknown summarize request keys: {', '.join(unknown)}")
     text = payload.get("text")

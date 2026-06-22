@@ -1,9 +1,16 @@
+from collections.abc import Iterable
 import unittest
 import json
+from typing import cast
 import tts_summarizer.speech
 from tts_summarizer.audio import chunks_to_wav_stream
 from tts_summarizer.config import TtsConfig, TtsProfileConfig
-from tts_summarizer.speech import AudioBytes, AudioChunk, RemoteTtsBackend, SpeechGenerator
+from tts_summarizer.speech import (
+    AudioBytes,
+    AudioChunk,
+    RemoteTtsBackend,
+    SpeechGenerator,
+)
 
 
 class FakeBackend:
@@ -41,7 +48,9 @@ class SpeechAudioTests(unittest.TestCase):
             generate_kwargs={"voice": "af_heart", "response_format": "mp3"},
         )
 
-        output = RemoteTtsBackend(urlopen=fake_urlopen, timeout=7).generate("hello", config)
+        output = RemoteTtsBackend(urlopen=fake_urlopen, timeout=7).generate(
+            "hello", config
+        )
         self.assertIsInstance(output, AudioBytes)
         self.assertEqual(b"".join(output.chunks), b"RIFFremote")
 
@@ -125,7 +134,8 @@ class SpeechAudioTests(unittest.TestCase):
             backend=CapturingBackend(),
         )
 
-        chunks = list(generator.generate("hello", profile_name="kokoro"))
+        output = generator.generate("hello", profile_name="kokoro")
+        chunks = list(cast(Iterable[AudioChunk], output))
 
         self.assertEqual(chunks[0].sample_rate, 16000)
         self.assertEqual(calls[0][1].model, "kokoro")
@@ -181,7 +191,7 @@ class SpeechAudioTests(unittest.TestCase):
         generator = SpeechGenerator(TtsConfig(), backend=FakeBackend())
 
         with self.assertRaises(ValueError):
-            list(generator.generate("hello", profile_name="missing"))
+            generator.generate("hello", profile_name="missing")
 
     def test_mlx_backend_forwards_generate_kwargs_and_stream(self):
         calls = []

@@ -18,6 +18,7 @@ class AudioChunk:
     samples: object
     sample_rate: int
 
+
 @dataclass(frozen=True)
 class AudioBytes:
     chunks: Iterable[bytes]
@@ -176,7 +177,5 @@ class SpeechGenerator:
     def sample_rate(self, profile_name: str | None = None) -> int:
         return self.profile(profile_name).sample_rate
 
-    def generate(
-        self, text: str, profile_name: str | None = None
-    ) -> SpeechOutput:
+    def generate(self, text: str, profile_name: str | None = None) -> SpeechOutput:
         return self.backend.generate(text, self.profile(profile_name))
