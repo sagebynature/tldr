@@ -35,7 +35,7 @@ Stop after the summary.
 enable_thinking = false
 
 [tts]
-default_profile = "kokoro"
+default_profile = "remote-kokoro"
 
 [tts.profiles.qwen]
 model = "mlx-community/Qwen3-TTS-12Hz-1.7B-CustomVoice-8bit"
@@ -43,6 +43,19 @@ stream = true
 sample_rate = 24000
 
 [tts.profiles.qwen.generate_kwargs]
+voice = "Aiden"
+lang_code = "english"
+streaming_interval = 0.32
+
+[tts.profiles.remote-qwen]
+backend = "remote"
+base_url = "http://127.0.0.1:9000/v1"
+api_key = "omlx"
+model = "mlx-community/Qwen3-TTS-12Hz-1.7B-CustomVoice-8bit"
+stream = true
+sample_rate = 24000
+
+[tts.profiles.remote-qwen.generate_kwargs]
 voice = "Aiden"
 lang_code = "english"
 streaming_interval = 0.32
@@ -59,7 +72,7 @@ speed = 1.3
 
 [tts.profiles.remote-kokoro]
 backend = "remote"
-base_url = "http://127.0.0.1:9100/v1"
+base_url = "http://127.0.0.1:9000/v1"
 api_key = "omlx"
 model = "mlx-community/Kokoro-82M-bf16"
 stream = true
