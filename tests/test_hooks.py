@@ -497,5 +497,105 @@ class HookInstallerTests(unittest.TestCase):
             )
 
 
+
+
+class OmpHookTests(unittest.TestCase):
+    def _write_node_runner(self, tmp: Path, entries: list[dict[str, object]]) -> Path:
+        hook_mjs = tmp / "omp_tts.mjs"
+        hook_mjs.write_text((ROOT / "hooks" / "omp" / "omp_tts.ts").read_text(encoding="utf-8"), encoding="utf-8")
+        runner = tmp / "run-omp-hook.mjs"
+        runner.write_text(
+            "\n".join(
+                [
+                    "import hook from './omp_tts.mjs';",
+                    "const handlers = {};",
+                    "const pi = { on(name, handler) { handlers[name] = handler; } };",
+                    f"const entries = {json.dumps(entries)};",
+                    "hook(pi);",
+                    "await handlers.turn_end({}, { cwd: '/repo/demo', sessionManager: { getEntries: () => entries } });",
+                ]
+            ),
+            encoding="utf-8",
+        )
+        return runner
+
+    def test_omp_hook_speaks_latest_assistant_text(self):
+        with tempfile.TemporaryDirectory() as tmp_name:
+            tmp = Path(tmp_name)
+            capture = stub_tts(tmp)
+            runner = self._write_node_runner(
+                tmp,
+                [
+                    {
+                        "type": "message",
+                        "message": {
+                            "role": "assistant",
+                            "content": [{"type": "text", "text": "First answer"}],
+                        },
+                    },
+                    {
+                        "type": "message",
+                        "message": {
+                            "role": "assistant",
+                            "content": [
+                                {"type": "thinking", "thinking": "ignore"},
+                                {"type": "text", "text": "OMP final answer"},
+                            ],
+                        },
+                    },
+                ],
+            )
+            env = os.environ.copy()
+            env.update(
+                {
+                    "OMP_TTS_BIN": str(tmp / "bin" / "tts-summarizer"),
+                    "OMP_TTS_SESSION_ID": "omp-session-123",
+                }
+            )
+
+            subprocess.run(["node", str(runner)], check=True, cwd=tmp, env=env, timeout=1)
+            call = read_json_when_ready(capture)
+
+            self.assertEqual(call["argv"], ["speak", "--session_id", "omp-session-123", "OMP final answer"])
+            self.assertEqual(call["stdin"], "")
+
+    def test_omp_hook_exits_before_speech_finishes(self):
+        with tempfile.TemporaryDirectory() as tmp_name:
+            tmp = Path(tmp_name)
+            capture = stub_tts(tmp, delay=1.5)
+            runner = self._write_node_runner(
+                tmp,
+                [
+                    {
+                        "type": "message",
+                        "message": {
+                            "role": "assistant",
+                            "content": [{"type": "text", "text": "Slow OMP speech"}],
+                        },
+                    }
+                ],
+            )
+            env = os.environ.copy()
+            env["OMP_TTS_BIN"] = str(tmp / "bin" / "tts-summarizer")
+
+            subprocess.run(["node", str(runner)], check=True, cwd=tmp, env=env, timeout=0.5)
+            call = read_json_when_ready(capture)
+
+            self.assertEqual(call["argv"], ["speak", "--session_id", "omp:/repo/demo", "Slow OMP speech"])
+
+    def test_cli_install_omp_hook_copies_global_hook_file(self):
+        with tempfile.TemporaryDirectory() as tmp_name:
+            home = Path(tmp_name)
+            old_home, old_path = with_home_and_path(home, os.environ["PATH"])
+            try:
+                self.assertEqual(cli.main(["install", "--harness", "omp"]), 0)
+                self.assertEqual(cli.main(["install", "--harness", "omp"]), 0)
+            finally:
+                restore_home_and_path(old_home, old_path)
+
+            installed = home / ".omp" / ".agent" / "extensions" / "tts-summarizer.ts"
+            self.assertTrue(installed.exists())
+            self.assertIn("turn_end", installed.read_text(encoding="utf-8"))
+
 if __name__ == "__main__":
     unittest.main()

@@ -7,13 +7,21 @@ from importlib import resources
 from pathlib import Path
 from typing import Any
 
+HOOK_FILENAMES = {
+    "codex": "codex_tts.py",
+    "claude": "claude_tts.py",
+    "omp": "omp_tts.ts",
+}
+
 
 def _copy_hook(harness: str, destination: Path) -> None:
-    source_tree_hook = Path(__file__).resolve().parents[2] / "hooks" / harness / f"{harness}_tts.py"
+    filename = HOOK_FILENAMES[harness]
+    source_tree_hook = Path(__file__).resolve().parents[2] / "hooks" / harness / filename
     if source_tree_hook.is_file():
         shutil.copyfile(source_tree_hook, destination)
         return
-    resource = resources.files("tts_summarizer") / "hooks" / f"{harness}_tts.py"
+
+    resource = resources.files("tts_summarizer") / "hooks" / filename
     with resources.as_file(resource) as source:
         shutil.copyfile(source, destination)
 
@@ -144,10 +152,21 @@ def _install_claude(home: Path) -> Path:
     return installed_hook
 
 
+def _install_omp(home: Path) -> Path:
+    install_dir = home / ".omp" / "agent" / "extensions"
+    installed_hook = install_dir / "tts-summarizer.ts"
+
+    install_dir.mkdir(parents=True, exist_ok=True)
+    _copy_hook("omp", installed_hook)
+    return installed_hook
+
+
 def install_hook(harness: str, home: Path | None = None) -> Path:
     root = home or Path.home()
     if harness == "codex":
         return _install_codex(root)
     if harness == "claude":
         return _install_claude(root)
+    if harness == "omp":
+        return _install_omp(root)
     raise ValueError(f"unsupported harness: {harness}")

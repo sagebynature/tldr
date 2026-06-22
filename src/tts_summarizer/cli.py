@@ -162,7 +162,7 @@ def build_parser() -> argparse.ArgumentParser:
     stop.add_argument("--config")
 
     install = subcommands.add_parser("install")
-    install.add_argument("--harness", choices=["codex", "claude"], required=True)
+    install.add_argument("--harness", choices=["codex", "claude", "omp"], required=True)
 
     speak = subcommands.add_parser("speak")
     speak.add_argument("--config")
