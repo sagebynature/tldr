@@ -57,6 +57,13 @@ FastAPI OpenAPI docs are available while the daemon is running:
 `/v1/speak` returns WAV bytes. Playback belongs to the client.
 
 ```bash
+tts-summarizer speak --session_id demo "Codex finished."
+```
+
+Use `--summarize false` to send text directly to TTS. `--session_id` interrupts any previous playback for that session.
+
+
+```bash
 curl -sS \
   -H 'Content-Type: application/json' \
   -H 'X-TTS-Caller: manual' \
