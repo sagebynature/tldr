@@ -1,5 +1,6 @@
 import unittest
 import unittest.mock
+from urllib.error import URLError
 
 from fastapi.testclient import TestClient
 
@@ -35,6 +36,14 @@ class RemoteSpeech:
 
     def generate(self, text, profile_name=None):
         return AudioBytes([b"RIFFremote-wav"])
+
+
+class UnavailableRemoteSpeech:
+    def sample_rate(self, profile_name=None):
+        return 24000
+
+    def generate(self, text, profile_name=None):
+        raise URLError(ConnectionRefusedError(61, "Connection refused"))
 
 
 class ServerTests(unittest.TestCase):
@@ -177,6 +186,19 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.headers["content-type"], "audio/wav")
         self.assertEqual(response.content, b"RIFFremote-wav")
+
+    def test_fastapi_speak_route_reports_remote_tts_unavailable(self):
+        client = TestClient(
+            create_app(
+                Config(), summarizer=FakeSummarizer(), speech=UnavailableRemoteSpeech()
+            ),
+            raise_server_exceptions=False,
+        )
+
+        response = client.post("/v1/speak", json={"text": "hello"})
+
+        self.assertEqual(response.status_code, 502)
+        self.assertEqual(response.json(), {"error": "remote TTS unavailable"})
 
     def test_fastapi_speak_route_summarizes_by_default(self):
         speech = CapturingSpeech()

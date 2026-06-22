@@ -4,6 +4,7 @@ from collections.abc import Iterable
 import logging
 import os
 import socket
+from urllib.error import URLError
 
 from fastapi import FastAPI, Request, Response
 from fastapi.exceptions import RequestValidationError
@@ -153,6 +154,11 @@ def create_app(config: Config, summarizer=None, speech=None) -> FastAPI:
             body = synthesize_speech(speech_request, summarizer, speech)
         except ValueError as exc:
             return JSONResponse(status_code=400, content={"error": str(exc)})
+        except URLError as exc:
+            logger.warning("remote TTS unavailable: %s", exc)
+            return JSONResponse(
+                status_code=502, content={"error": "remote TTS unavailable"}
+            )
         return StreamingResponse(body, media_type="audio/wav")
 
     @app.post("/v1/summarize", response_model=SummarizeResponseBody)
