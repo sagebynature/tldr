@@ -81,10 +81,10 @@ Switch individual profiles by changing only the relevant `default_profile` value
 
 ## Apple local MLX notes
 
-Apple local profiles use `mlx_audio` in process intended Apple Silicon Macs. Install optional local audio dependencies using local MLX TTS:
+Apple local profiles use `mlx_audio` in process intended Apple Silicon Macs. Install optional local audio dependencies and the default Kokoro TTS profile dependencies using local MLX TTS:
 
 ```bash
-uv tool install 'tts-summarizer[mlx] @ git+https://github.com/sagebynature/tts-summarizer'
+uv tool install 'tts-summarizer[mlx,kokoro] @ git+https://github.com/sagebynature/tts-summarizer'
 ```
 
 The Apple local example keeps remote profiles too, so you can switch individual profiles without changing the daemon.
