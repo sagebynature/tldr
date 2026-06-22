@@ -4,6 +4,7 @@ import shlex
 import stat
 import subprocess
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -14,25 +15,36 @@ ROOT = Path(__file__).resolve().parents[1]
 CODEX_HOOK = ROOT / "hooks" / "codex" / "codex_tts.py"
 
 
+def read_json_when_ready(path: Path, timeout: float = 3) -> dict[str, object]:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if path.exists():
+            return json.loads(path.read_text(encoding="utf-8"))
+        time.sleep(0.05)
+    raise AssertionError(f"timed out waiting for {path}")
+
+
 class CodexHookTests(unittest.TestCase):
-    def _stub_tts(self, directory: Path) -> Path:
+    def _stub_tts(self, directory: Path, delay: float = 0) -> Path:
         bin_dir = directory / "bin"
         bin_dir.mkdir(exist_ok=True)
         capture = directory / "tts-call.json"
+        started = directory / "tts-started"
         stub = bin_dir / "tts-summarizer"
         stub.write_text(
             "#!/usr/bin/env python3\n"
-            "import json, pathlib, sys\n"
+            "import json, pathlib, sys, time\n"
+            f"pathlib.Path({str(started)!r}).write_text('1', encoding='utf-8')\n"
+            f"time.sleep({delay!r})\n"
             f"pathlib.Path({str(capture)!r}).write_text(json.dumps({{'argv': sys.argv[1:], 'stdin': sys.stdin.read()}}), encoding='utf-8')\n",
             encoding="utf-8",
         )
         stub.chmod(stub.stat().st_mode | stat.S_IXUSR)
         return capture
 
-    def _run_codex_hook(self, tmp: Path, payload: dict[str, object]) -> dict[str, object]:
+    def _hook_env(self, tmp: Path) -> dict[str, str]:
         state_file = tmp / "tts.enabled"
         state_file.write_text("1", encoding="utf-8")
-        capture = self._stub_tts(tmp)
         env = os.environ.copy()
         env.update(
             {
@@ -42,15 +54,19 @@ class CodexHookTests(unittest.TestCase):
                 "CODEX_TTS_PAYLOAD_LOG": str(tmp / "payload.json"),
             }
         )
+        return env
+
+    def _run_codex_hook(self, tmp: Path, payload: dict[str, object]) -> dict[str, object]:
+        capture = self._stub_tts(tmp)
         subprocess.run(
             [str(CODEX_HOOK)],
             input=json.dumps(payload),
             text=True,
             check=True,
-            env=env,
+            env=self._hook_env(tmp),
             cwd=ROOT,
         )
-        return json.loads(capture.read_text(encoding="utf-8"))
+        return read_json_when_ready(capture)
 
     def test_codex_hook_speaks_payload_message_with_session_id(self):
         with tempfile.TemporaryDirectory() as tmp_name:
@@ -119,6 +135,35 @@ class CodexHookTests(unittest.TestCase):
             ["speak", "--session_id", "codex-session-456", "Final answer text"],
         )
 
+    def test_codex_hook_exits_before_speech_finishes(self):
+        with tempfile.TemporaryDirectory() as tmp_name:
+            tmp = Path(tmp_name)
+            capture = self._stub_tts(tmp, delay=1.5)
+            payload = {
+                "session_id": "codex-session-999",
+                "last_assistant_message": "Long speech text.",
+            }
+
+            try:
+                subprocess.run(
+                    [str(CODEX_HOOK)],
+                    input=json.dumps(payload),
+                    text=True,
+                    check=True,
+                    env=self._hook_env(tmp),
+                    cwd=ROOT,
+                    timeout=0.5,
+                )
+            except subprocess.TimeoutExpired:
+                self.fail("Codex hook waited for tts-summarizer instead of spawning it")
+
+            self.assertFalse(capture.exists())
+            call = read_json_when_ready(capture)
+            self.assertEqual(
+                call["argv"],
+                ["speak", "--session_id", "codex-session-999", "Long speech text."],
+            )
+
 
 class HookInstallerTests(unittest.TestCase):
     def _with_home_and_path(self, home: Path, path: str):
@@ -178,10 +223,7 @@ class HookInstallerTests(unittest.TestCase):
 
             hooks = json.loads((codex_dir / "hooks.json").read_text(encoding="utf-8"))
             stop_entries = hooks["hooks"]["Stop"]
-            expected_command = (
-                f"/usr/bin/env CODEX_TTS_BIN={shlex.quote(str(home / 'bin' / 'tts-summarizer'))} "
-                f"python3 {shlex.quote(str(installed))}"
-            )
+            expected_command = f"python3 {shlex.quote(str(installed))}"
             commands = [
                 hook.get("command")
                 for entry in stop_entries
@@ -202,13 +244,13 @@ class HookInstallerTests(unittest.TestCase):
             self.assertEqual(matching[0]["matcher"], "*")
             self.assertTrue((codex_dir / "tts.enabled").exists())
 
-    def test_installed_codex_command_runs_with_restricted_path(self):
+    def test_installed_codex_command_runs_when_tts_summarizer_is_installed(self):
         with tempfile.TemporaryDirectory() as tmp_name:
             home = Path(tmp_name)
             capture = CodexHookTests()._stub_tts(home)
             (home / ".codex").mkdir()
             old_home, old_path = self._with_home_and_path(
-                home, f"{home / 'bin'}{os.pathsep}{os.environ['PATH']}"
+                home, f"{home / 'bin'}{os.pathsep}/usr/bin:/bin"
             )
             try:
                 self.assertEqual(cli.main(["install", "--harness", "codex"]), 0)
@@ -220,7 +262,7 @@ class HookInstallerTests(unittest.TestCase):
             env = os.environ.copy()
             env.update(
                 {
-                    "PATH": "/usr/bin:/bin",
+                    "PATH": f"{home / 'bin'}{os.pathsep}/usr/bin:/bin",
                     "CODEX_TTS_STATE_FILE": str(home / ".codex" / "tts.enabled"),
                     "CODEX_TTS_LOG": str(home / "hook.log"),
                     "CODEX_TTS_PAYLOAD_LOG": str(home / "payload.json"),
@@ -241,7 +283,7 @@ class HookInstallerTests(unittest.TestCase):
                 cwd=ROOT,
             )
 
-            call = json.loads(capture.read_text(encoding="utf-8"))
+            call = read_json_when_ready(capture)
             self.assertEqual(
                 call["argv"],
                 ["speak", "--session_id", "codex-session-789", "Hook runner text."],

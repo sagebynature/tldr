@@ -146,8 +146,19 @@ def main() -> int:
     if session_id:
         args.extend(["--session_id", session_id])
     args.append(text)
-    with log_file.open("a", encoding="utf-8") as log:
-        subprocess.run(args, stdout=log, stderr=subprocess.STDOUT, check=False)
+    log_file.parent.mkdir(parents=True, exist_ok=True)
+    log = log_file.open("a", encoding="utf-8")
+    try:
+        subprocess.Popen(
+            args,
+            stdin=subprocess.DEVNULL,
+            stdout=log,
+            stderr=subprocess.STDOUT,
+            start_new_session=True,
+            close_fds=True,
+        )
+    finally:
+        log.close()
     return 0
 
 
