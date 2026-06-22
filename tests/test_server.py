@@ -8,6 +8,7 @@ from tts_summarizer.config import Config
 from tts_summarizer.request import SpeechRequest
 from tts_summarizer.server import TtsService, create_app, run_server
 from tts_summarizer.speech import AudioChunk
+from tts_summarizer.summarizer import Summarizer
 
 
 class FakeSummarizer:
@@ -197,6 +198,16 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("/v1/speak", response.json()["paths"])
 
+
+    def test_fastapi_openapi_schema_includes_summarize(self):
+        service = TtsService(Config(), summarizer=FakeSummarizer(), speech=FakeSpeech(), player=FakePlayer())
+        client = TestClient(create_app(Config(), service=service))
+
+        response = client.get("/openapi.json")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("/v1/summarize", response.json()["paths"])
+
     def test_fastapi_health_route(self):
         service = TtsService(Config(), summarizer=FakeSummarizer(), speech=FakeSpeech(), player=FakePlayer())
         client = TestClient(create_app(Config(), service=service))
@@ -252,6 +263,65 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(set(response.json()), {"error"})
 
+
+    def test_fastapi_summarize_route_uses_allowed_overrides(self):
+        class CapturingBackend:
+            def __init__(self):
+                self.config = None
+                self.messages = []
+
+            def generate(self, messages, config):
+                self.messages = messages
+                self.config = config
+                return "short summary"
+
+        backend = CapturingBackend()
+        service = TtsService(
+            Config(),
+            summarizer=Summarizer(Config().summarizer, backend=backend),
+            speech=FakeSpeech(),
+            player=FakePlayer(),
+        )
+        client = TestClient(create_app(Config(), service=service))
+
+        response = client.post(
+            "/v1/summarize",
+            json={
+                "text": "Read HTTPS://example.test/private.",
+                "word_threshold": 0,
+                "max_words": 12,
+                "temperature": 0.7,
+                "max_tokens": 33,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"summary": "short summary", "changed": True})
+        assert backend.config is not None
+        self.assertEqual(backend.config.word_threshold, 0)
+        self.assertEqual(backend.config.max_words, 12)
+        self.assertEqual(backend.config.temperature, 0.7)
+        self.assertEqual(backend.config.max_tokens, 33)
+        self.assertEqual(backend.config.model, Config().summarizer.model)
+        self.assertIn("supplied URL", backend.messages[-1]["content"])
+
+    def test_fastapi_summarize_route_rejects_disallowed_override(self):
+        service = TtsService(Config(), summarizer=FakeSummarizer(), speech=FakeSpeech(), player=FakePlayer())
+        client = TestClient(create_app(Config(), service=service))
+
+        response = client.post("/v1/summarize", json={"text": "hello", "model": "nope"})
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("error", response.json())
+
+    def test_fastapi_summarize_route_requires_text(self):
+        service = TtsService(Config(), summarizer=FakeSummarizer(), speech=FakeSpeech(), player=FakePlayer())
+        client = TestClient(create_app(Config(), service=service))
+
+        response = client.post("/v1/summarize", json={"max_tokens": 10})
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("error", response.json())
 
 if __name__ == "__main__":
     unittest.main()

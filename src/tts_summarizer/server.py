@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from queue import Empty, Queue
 import logging
 import os
@@ -109,6 +110,37 @@ class TtsService:
         return {"status": "ok", "pid": os.getpid()}
 
 
+SUMMARY_OVERRIDE_KEYS = {
+    "word_threshold",
+    "max_words",
+    "temperature",
+    "max_tokens",
+}
+
+
+def _summary_request(payload: dict[str, object], config: Config):
+    unknown = sorted(set(payload) - (SUMMARY_OVERRIDE_KEYS | {"text"}))
+    if unknown:
+        raise RequestError(f"unknown summarize request keys: {', '.join(unknown)}")
+    text = payload.get("text")
+    if not isinstance(text, str) or not text.strip():
+        raise RequestError("summarize request requires non-empty text")
+    overrides: dict[str, object] = {}
+    for key in ("word_threshold", "max_words", "max_tokens"):
+        value = payload.get(key)
+        if value is None:
+            continue
+        if not isinstance(value, int) or isinstance(value, bool):
+            raise RequestError(f"{key} must be an integer")
+        overrides[key] = value
+    value = payload.get("temperature")
+    if value is not None:
+        if not isinstance(value, int | float) or isinstance(value, bool):
+            raise RequestError("temperature must be a number")
+        overrides["temperature"] = float(value)
+    return text, replace(config.summarizer, **overrides)
+
+
 def create_app(config: Config, service: TtsService | None = None) -> FastAPI:
     service = service or TtsService(config)
     app = FastAPI(title="tts-summarizer")
@@ -129,6 +161,16 @@ def create_app(config: Config, service: TtsService | None = None) -> FastAPI:
         except RequestError as exc:
             return JSONResponse(status_code=400, content={"error": str(exc)})
         return service.handle(request)
+
+    @app.post("/v1/summarize")
+    def summarize(payload: dict[str, object]):
+        try:
+            text, summarizer_config = _summary_request(payload, config)
+        except RequestError as exc:
+            return JSONResponse(status_code=400, content={"error": str(exc)})
+        backend = getattr(service.summarizer, "backend", None)
+        summary = Summarizer(summarizer_config, backend=backend).summarize(text)
+        return {"summary": summary, "changed": summary != text}
 
     @app.post("/shutdown")
     def shutdown() -> dict[str, object]:
