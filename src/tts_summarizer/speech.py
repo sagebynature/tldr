@@ -134,10 +134,12 @@ class RemoteTtsBackend:
             method="POST",
         )
 
+        response = cast(Any, self.urlopen(request, timeout=self.timeout))
+
         def chunks() -> Iterable[bytes]:
-            with cast(Any, self.urlopen(request, timeout=self.timeout)) as response:
+            with response as opened_response:
                 while True:
-                    chunk = response.read(64 * 1024)
+                    chunk = opened_response.read(64 * 1024)
                     if not chunk:
                         break
                     yield chunk

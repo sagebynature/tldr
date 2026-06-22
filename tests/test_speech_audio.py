@@ -67,6 +67,27 @@ class SpeechAudioTests(unittest.TestCase):
         self.assertEqual(body["voice"], "af_heart")
         self.assertEqual(body["response_format"], "wav")
 
+    def test_remote_tts_backend_raises_before_returning_audio_when_open_fails(self):
+        class RemoteOpenError(Exception):
+            pass
+
+        calls = []
+
+        def fake_urlopen(request, timeout):
+            calls.append((request, timeout))
+            raise RemoteOpenError("remote down")
+
+        config = TtsProfileConfig(
+            backend="remote",
+            base_url="http://127.0.0.1:9100/v1",
+            model="model",
+        )
+
+        with self.assertRaises(RemoteOpenError):
+            RemoteTtsBackend(urlopen=fake_urlopen, timeout=3).generate("hello", config)
+
+        self.assertEqual(len(calls), 1)
+
     def test_remote_tts_backend_omits_empty_authorization(self):
         headers = []
 
