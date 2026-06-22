@@ -144,10 +144,27 @@ class RemoteTtsBackend:
         return AudioBytes(chunks())
 
 
+class RoutingSpeechBackend:
+    def __init__(
+        self,
+        local: SpeechBackend | None = None,
+        remote: SpeechBackend | None = None,
+    ):
+        self.local = local or MlxAudioBackend()
+        self.remote = remote or RemoteTtsBackend()
+
+    def generate(self, text: str, config: TtsProfileConfig) -> SpeechOutput:
+        if config.backend == "mlx":
+            return self.local.generate(text, config)
+        if config.backend == "remote":
+            return self.remote.generate(text, config)
+        raise ValueError(f"unknown TTS backend: {config.backend}")
+
+
 class SpeechGenerator:
     def __init__(self, config: TtsConfig, backend: SpeechBackend | None = None):
         self.config = config
-        self.backend = backend or MlxAudioBackend()
+        self.backend = backend or RoutingSpeechBackend()
 
     def profile(self, profile_name: str | None = None) -> TtsProfileConfig:
         name = profile_name or self.config.default_profile

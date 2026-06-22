@@ -131,6 +131,52 @@ class SpeechAudioTests(unittest.TestCase):
         self.assertEqual(calls[0][1].model, "kokoro")
         self.assertEqual(calls[0][1].generate_kwargs["speed"], 1.6)
 
+    def test_speech_generator_routes_remote_profile_to_remote_backend(self):
+        calls = []
+
+        class LocalBackend:
+            def generate(self, text, config):
+                calls.append(("local", text, config.model))
+                return [AudioChunk(samples=[0.0], sample_rate=8000)]
+
+        class RemoteBackend:
+            def generate(self, text, config):
+                calls.append(("remote", text, config.model))
+                return AudioBytes([b"RIFFremote"])
+
+        generator = SpeechGenerator(
+            TtsConfig(
+                default_profile="remote",
+                profiles={
+                    "local": TtsProfileConfig(model="local-model"),
+                    "remote": TtsProfileConfig(
+                        backend="remote",
+                        base_url="http://127.0.0.1:9100/v1",
+                        model="remote-model",
+                    ),
+                },
+            )
+        )
+        generator.backend = tts_summarizer.speech.RoutingSpeechBackend(
+            local=LocalBackend(), remote=RemoteBackend()
+        )
+
+        output = generator.generate("hello")
+
+        self.assertEqual(output, AudioBytes([b"RIFFremote"]))
+        self.assertEqual(calls, [("remote", "hello", "remote-model")])
+
+    def test_speech_generator_rejects_unknown_backend(self):
+        generator = SpeechGenerator(
+            TtsConfig(
+                profiles={"bad": TtsProfileConfig(backend="wat", model="m")},
+                default_profile="bad",
+            )
+        )
+
+        with self.assertRaisesRegex(ValueError, "unknown TTS backend: wat"):
+            generator.generate("hello")
+
     def test_speech_generator_rejects_unknown_profile(self):
         generator = SpeechGenerator(TtsConfig(), backend=FakeBackend())
 
