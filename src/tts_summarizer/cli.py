@@ -13,6 +13,7 @@ from .client import daemon_base_url, get_json, post_json
 from .config import Config, ConfigError, load_config
 from .logging_setup import setup_logging
 from .server import run_server
+from .installer import install_hook
 
 
 DEFAULT_SPEAK_CONFIG = "~/.config/tts-summarizer/config.toml"
@@ -160,6 +161,9 @@ def build_parser() -> argparse.ArgumentParser:
     stop = subcommands.add_parser("stop")
     stop.add_argument("--config")
 
+    install = subcommands.add_parser("install")
+    install.add_argument("--harness", choices=["codex"], required=True)
+
     speak = subcommands.add_parser("speak")
     speak.add_argument("--config")
     speak.add_argument("--server")
@@ -176,6 +180,11 @@ def main(argv: list[str] | None = None) -> int:
         args = parser.parse_args(argv)
     except SystemExit as exc:
         return int(exc.code or 0)
+
+    if args.command == "install":
+        installed = install_hook(args.harness)
+        print(f"Installed {args.harness} TTS hook: {installed}")
+        return 0
 
     if args.command == "speak":
         return _speak(args)
