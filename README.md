@@ -1,15 +1,12 @@
 # tts-summarizer
 
-Harness-neutral local TTS summarizer daemon for macOS/Apple Silicon. It accepts normalized speech requests, keeps MLX summarizer/TTS models warm, and interrupts stale speech from the same caller session.
+Harness-neutral local TTS summarizer daemon for macOS/Apple Silicon. It accepts HTTP speech requests, keeps MLX summarizer/TTS models warm, and returns WAV bytes for client-side playback.
 
 ## Requirements
 
 - Python 3.11+
 - `uv`
 - Apple Silicon Mac for MLX TTS runtime
-- FFmpeg `ffplay` available on `PATH`
-
-Installer work deferred. Future installer work should validate FFmpeg/`ffplay` before starting the daemon.
 
 ## Install for local development
 
@@ -49,12 +46,18 @@ FastAPI OpenAPI docs are available while the daemon is running:
 
 ## Send a request
 
+`/v1/speak` returns WAV bytes. Playback belongs to the client.
+
 ```bash
-echo '{"caller":"manual","session_id":"demo","text":"Codex finished."}' \
-  | uv run tts-summarizer speak --config config.example.toml
+curl -sS \
+  -H 'Content-Type: application/json' \
+  -H 'X-TTS-Caller: manual' \
+  -H 'X-TTS-Session-Id: demo' \
+  -d '{"text":"Codex finished.","summarize":true}' \
+  http://127.0.0.1:9200/v1/speak > speech.wav
 ```
 
-A later request with the same `caller` and `session_id` interrupts stale speech for that session.
+Use `"summarize": false` to send text directly to TTS.
 
 ## Check and stop
 
@@ -70,7 +73,7 @@ uv run tts-summarizer stop --config config.example.toml
 3. `~/.config/tts-summarizer/config.toml`
 4. built-in defaults
 
-See `config.example.toml` for all model, prompt, session, server, and audio settings.
+See `config.example.toml` for all model, prompt, server, and audio settings.
 
 Model-specific `mlx-audio` generation arguments belong under `[tts.generate_kwargs]`:
 

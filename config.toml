@@ -6,10 +6,6 @@ auto_start = true
 startup_timeout_ms = 3000
 request_timeout_ms = 5000
 
-[session]
-interrupt_same_session = true
-max_queue_per_session = 1
-cross_session_policy = "queue" # queue | mix | interrupt_all
 
 [summarizer]
 enabled = true

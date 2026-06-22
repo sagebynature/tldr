@@ -10,14 +10,9 @@ class ConfigError(ValueError):
     pass
 
 
-DEFAULT_SYSTEM_PROMPT = """You summarize assistant responses for text-to-speech.
-Return only a spoken summary.
-Do not mention that this is a summary.
-If the content is a question, preserve the question instead of answering it.
-Do not include markdown, code fences, file paths, URLs, bullets, or formatting."""
+DEFAULT_SYSTEM_PROMPT = """You summarize assistant responses for text-to-speech. Return only spoken summary. Do not mention that this is a summary. If content is a question, preserve the question instead of answering it. Do not include markdown, code fences, file paths, URLs, bullets, or formatting."""
 
-DEFAULT_USER_PROMPT_TEMPLATE = """Summarize this response in {max_words} words or fewer.
-Preserve the practical outcome and next action.
+DEFAULT_USER_PROMPT_TEMPLATE = """Summarize response in {max_words} words or fewer. Preserve practical outcome and next action.
 
 {text}"""
 
@@ -30,13 +25,6 @@ class ServerConfig:
     auto_start: bool = True
     startup_timeout_ms: int = 3000
     request_timeout_ms: int = 5000
-
-
-@dataclass(frozen=True)
-class SessionConfig:
-    interrupt_same_session: bool = True
-    max_queue_per_session: int = 1
-    cross_session_policy: str = "queue"
 
 
 @dataclass(frozen=True)
@@ -76,7 +64,6 @@ class LoggingConfig:
 @dataclass(frozen=True)
 class Config:
     server: ServerConfig = field(default_factory=ServerConfig)
-    session: SessionConfig = field(default_factory=SessionConfig)
     summarizer: SummarizerConfig = field(default_factory=SummarizerConfig)
     tts: TtsConfig = field(default_factory=TtsConfig)
     audio: AudioConfig = field(default_factory=AudioConfig)
@@ -102,13 +89,12 @@ def _merge_dataclass(instance: Any, values: dict[str, Any]) -> Any:
 
 def _apply(raw: dict[str, Any], source: Path | None) -> Config:
     cfg = Config(source=source)
-    allowed = {"server", "session", "summarizer", "tts", "audio", "logging"}
+    allowed = {"server", "summarizer", "tts", "audio", "logging"}
     unknown_sections = sorted(set(raw) - allowed)
     if unknown_sections:
-        raise ConfigError(f"unknown config sections: {', '.join(unknown_sections)}")
+        raise ConfigError(f"unknown sections: {', '.join(unknown_sections)}")
     return Config(
         server=_merge_dataclass(cfg.server, raw.get("server", {})),
-        session=_merge_dataclass(cfg.session, raw.get("session", {})),
         summarizer=_merge_dataclass(cfg.summarizer, raw.get("summarizer", {})),
         tts=_merge_dataclass(cfg.tts, raw.get("tts", {})),
         audio=_merge_dataclass(cfg.audio, raw.get("audio", {})),
@@ -139,9 +125,7 @@ def load_config(
     cwd_config = cwd / "config.toml"
     if cwd_config.exists():
         return _apply(_read(cwd_config), cwd_config)
-
     user_config = home / ".config" / "tts-summarizer" / "config.toml"
     if user_config.exists():
         return _apply(_read(user_config), user_config)
-
     return Config()

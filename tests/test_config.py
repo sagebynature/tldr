@@ -13,6 +13,17 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(cfg.server.host, "127.0.0.1")
         self.assertEqual(cfg.summarizer.max_words, 40)
         self.assertIn("text-to-speech", cfg.summarizer.system_prompt)
+        self.assertFalse(hasattr(cfg, "session"))
+
+    def test_session_config_section_is_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "config.toml"
+            path.write_text(
+                "[session]\ninterrupt_same_session = true\n", encoding="utf-8"
+            )
+
+            with self.assertRaises(ConfigError):
+                load_config(str(path), cwd=Path(tmp), home=Path(tmp))
 
     def test_summarizer_endpoint_config_loads(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -31,9 +42,9 @@ class ConfigTests(unittest.TestCase):
 
             cfg = load_config(str(path), cwd=Path(tmp), home=Path(tmp))
 
-            self.assertEqual(cfg.summarizer.base_url, "http://127.0.0.1:1234/v1")
-            self.assertEqual(cfg.summarizer.api_key, "test-token")
-            self.assertEqual(cfg.summarizer.model, "local-model")
+        self.assertEqual(cfg.summarizer.base_url, "http://127.0.0.1:1234/v1")
+        self.assertEqual(cfg.summarizer.api_key, "test-token")
+        self.assertEqual(cfg.summarizer.model, "local-model")
 
     def test_audio_ffplay_backend_config_loads(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -42,7 +53,7 @@ class ConfigTests(unittest.TestCase):
 
             cfg = load_config(str(path), cwd=Path(tmp), home=Path(tmp))
 
-            self.assertEqual(cfg.audio.backend, "ffplay")
+        self.assertEqual(cfg.audio.backend, "ffplay")
 
     def test_cwd_config_beats_user_config(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -70,10 +81,12 @@ class ConfigTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "config.toml"
             path.write_text(
-                '[summarizer]\nsystem_prompt = "Speak plainly."\n', encoding="utf-8"
+                '[summarizer]\nsystem_prompt = "custom system"\n', encoding="utf-8"
             )
+
             cfg = load_config(str(path), cwd=Path(tmp), home=Path(tmp))
-        self.assertEqual(cfg.summarizer.system_prompt, "Speak plainly.")
+
+        self.assertEqual(cfg.summarizer.system_prompt, "custom system")
 
 
 if __name__ == "__main__":

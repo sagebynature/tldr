@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-import json
 import os
 
 
@@ -15,70 +14,37 @@ class SpeechRequest:
     text: str
     session_id: str
     caller: str = "default"
-    event: str = ""
     metadata: dict[str, object] = field(default_factory=dict)
+    summarize: bool = True
 
     @classmethod
-    def from_json(cls, data: dict[str, object]) -> "SpeechRequest":
+    def from_json(
+        cls,
+        data: dict[str, object],
+        caller: str | None = None,
+        session_id: str | None = None,
+    ) -> "SpeechRequest":
         text = data.get("text")
         if not isinstance(text, str) or not text.strip():
             raise RequestError("normalized request requires non-empty text")
-        caller = data.get("caller")
-        session_id = data.get("session_id")
-        event = data.get("event")
         metadata = data.get("metadata")
+        summarize = data.get("summarize")
         clean_metadata: dict[str, object] = {}
         if isinstance(metadata, dict):
             clean_metadata = {str(key): value for key, value in metadata.items()}
         return cls(
             text=text,
-            caller=caller if isinstance(caller, str) and caller else "default",
-            session_id=session_id
-            if isinstance(session_id, str) and session_id
-            else fallback_session_id(),
-            event=event if isinstance(event, str) else "",
+            caller=caller or "default",
+            session_id=session_id or fallback_session_id(),
             metadata=clean_metadata,
+            summarize=summarize if isinstance(summarize, bool) else True,
         )
-
-    @classmethod
-    def from_cli(
-        cls,
-        text: str | None,
-        stdin_text: str,
-        caller: str | None,
-        session_id: str | None,
-    ) -> "SpeechRequest":
-        if text is not None:
-            return cls(
-                text=text,
-                caller=caller or "default",
-                session_id=session_id or fallback_session_id(),
-            )
-        stripped = stdin_text.strip()
-        if not stripped:
-            raise RequestError("provide --text or normalized JSON on stdin")
-        try:
-            payload = json.loads(stripped)
-        except json.JSONDecodeError:
-            payload = {"text": stdin_text}
-        if not isinstance(payload, dict):
-            raise RequestError("stdin JSON must be an object")
-        clean_payload: dict[str, object] = {
-            str(key): value for key, value in payload.items()
-        }
-        if caller is not None:
-            clean_payload["caller"] = caller
-        if session_id is not None:
-            clean_payload["session_id"] = session_id
-        return cls.from_json(clean_payload)
 
     def to_json(self) -> dict[str, object]:
         return {
             "text": self.text,
-            "session_id": self.session_id,
-            "caller": self.caller,
-            "event": self.event,
             "metadata": self.metadata,
+            "summarize": self.summarize,
         }
 
     def session_key(self) -> str:
