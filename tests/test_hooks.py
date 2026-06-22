@@ -654,6 +654,39 @@ class HookInstallerTests(unittest.TestCase):
             )
 
 
+    def test_cli_install_hermes_hook_creates_idempotent_shell_hook_entry(self):
+        with tempfile.TemporaryDirectory() as tmp_name:
+            home = Path(tmp_name)
+            hermes_dir = home / ".hermes"
+            config_yaml = hermes_dir / "config.yaml"
+            hermes_dir.mkdir()
+            config_yaml.write_text("model: qwen\n", encoding="utf-8")
+            old_home, old_path = with_home_and_path(
+                home, f"{home / 'bin'}{os.pathsep}{os.environ['PATH']}"
+            )
+            try:
+                self.assertEqual(cli.main(["install", "--harness", "hermes"]), 0)
+                self.assertEqual(cli.main(["install", "--harness", "hermes"]), 0)
+            finally:
+                restore_home_and_path(old_home, old_path)
+
+            installed = (
+                home / ".hermes" / "agent-hooks" / "tts-summarizer" / "hermes_tts.py"
+            )
+            config = config_yaml.read_text(encoding="utf-8")
+            command = str(installed)
+
+            self.assertTrue(installed.exists())
+            self.assertTrue(os.access(installed, os.X_OK))
+            self.assertTrue((home / ".hermes" / "tts.enabled").exists())
+            self.assertIn("model: qwen\n", config)
+            self.assertIn("hooks:\n", config)
+            self.assertIn("post_llm_call:\n", config)
+            self.assertIn(f'command: "{command}"\n', config)
+            self.assertIn("timeout: 5\n", config)
+            self.assertEqual(config.count(command), 1)
+
+
 class OmpHookTests(unittest.TestCase):
     def _write_node_runner(
         self,

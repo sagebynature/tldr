@@ -176,7 +176,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     install = subcommands.add_parser("install")
     install.add_argument(
-        "--harness", choices=["codex", "claude", "omp", "pi"], required=True
+        "--harness", choices=["codex", "claude", "omp", "pi", "hermes"], required=True
     )
 
     speak = subcommands.add_parser("speak")

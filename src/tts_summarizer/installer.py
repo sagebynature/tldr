@@ -12,6 +12,7 @@ HOOK_FILENAMES = {
     "claude": "claude_tts.py",
     "omp": "tts.ts",
     "pi": "tts.ts",
+    "hermes": "hermes_tts.py",
 }
 
 
@@ -177,6 +178,48 @@ def _install_pi(home: Path) -> Path:
     return installed_hook
 
 
+def _quote_yaml_string(value: str) -> str:
+    return json.dumps(value)
+
+
+def _ensure_hermes_config_entry(config_yaml: Path, installed_hook: Path) -> None:
+    command = str(installed_hook)
+    existing = config_yaml.read_text(encoding="utf-8") if config_yaml.exists() else ""
+    if command in existing:
+        return
+
+    prefix = "" if not existing or existing.endswith("\n") else "\n"
+    if "hooks:" in existing:
+        block = (
+            f"{prefix}  post_llm_call:\n"
+            f"    - command: {_quote_yaml_string(command)}\n"
+            "      timeout: 5\n"
+        )
+    else:
+        block = (
+            f"{prefix}hooks:\n"
+            "  post_llm_call:\n"
+            f"    - command: {_quote_yaml_string(command)}\n"
+            "      timeout: 5\n"
+        )
+
+    config_yaml.parent.mkdir(parents=True, exist_ok=True)
+    config_yaml.write_text(existing + block, encoding="utf-8")
+
+
+def _install_hermes(home: Path) -> Path:
+    hermes_dir = home / ".hermes"
+    install_dir = hermes_dir / "agent-hooks" / "tts-summarizer"
+    installed_hook = install_dir / "hermes_tts.py"
+
+    install_dir.mkdir(parents=True, exist_ok=True)
+    _copy_hook("hermes", installed_hook)
+    installed_hook.chmod(installed_hook.stat().st_mode | 0o700)
+    (hermes_dir / "tts.enabled").touch()
+    _ensure_hermes_config_entry(hermes_dir / "config.yaml", installed_hook)
+    return installed_hook
+
+
 def install_hook(harness: str, home: Path | None = None) -> Path:
     root = home or Path.home()
     if harness == "codex":
@@ -187,4 +230,6 @@ def install_hook(harness: str, home: Path | None = None) -> Path:
         return _install_omp(root)
     if harness == "pi":
         return _install_pi(root)
+    if harness == "hermes":
+        return _install_hermes(root)
     raise ValueError(f"unsupported harness: {harness}")
