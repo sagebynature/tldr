@@ -1,50 +1,97 @@
 # tts-summarizer
 
-`tts-summarizer` is a small HTTP daemon you can bind to any AI application. It turns long AI responses into shorter, speech-friendly text, then returns TTS audio as WAV bytes.
+`tts-summarizer` is a small HTTP daemon you bind to any AI application. It turns long AI responses into shorter, speech-friendly text, then returns TTS audio WAV bytes.
 
-## What this is
+## What it is
 
-- A local HTTP service for AI apps that want spoken responses.
+- Local HTTP service for AI apps that want spoken responses.
 - Summarizes long assistant output into text that fits spoken playback.
 - Generates TTS audio for client-side playback.
-- Lets you configure your own summarization and TTS models, local or remote.
-- Works with local MLX models and OpenAI-compatible endpoints.
+- Uses configurable summarization and TTS models, local or remote.
+- Works with local MLX models or OpenAI-compatible remote endpoints.
 
 ## Requirements
 
 - Python 3.11+
 - `uv`
-- Apple Silicon Mac for local MLX TTS runtime
+- Remote OpenAI-compatible summarizer and TTS endpoints, or an Apple Silicon Mac for local MLX profiles.
+- Docker, only for the Docker quick start.
 
-## Install for local development
-
-```bash
-uv sync --dev
-```
-
-## Common commands
+## Quick start: local CLI install
 
 ```bash
-make build # uv build
-make test # uv run python -m unittest discover -s tests -v
-make typecheck # uvx ty check src tests
-make check # typecheck, test, build
-make run # uv run python -m tts_summarizer serve --config config.toml
+uv tool install git+https://github.com/sagebynature/tts-summarizer
+tts-summarizer init-config --profile remote
+tts-summarizer serve
 ```
 
-Use another config:
+The generated config lives at `~/.config/tts-summarizer/config.toml`. Use `--force` to replace an existing generated config:
 
 ```bash
-make run CONFIG=/path/to/config.toml
+tts-summarizer init-config --profile remote --force
 ```
 
-## Run the daemon
+The remote profile expects your summarizer and TTS servers to expose OpenAI-compatible APIs before you start the daemon.
+
+## Quick start: Docker
 
 ```bash
-uv run tts-summarizer serve --config config.toml
+git clone https://github.com/sagebynature/tts-summarizer
+cd tts-summarizer
+cp config.remote.example.toml config.toml
+docker compose up
 ```
 
-The daemon binds `127.0.0.1`, writes state under configured `state_dir`, and loads local MLX models lazily on first use.
+Docker runs the HTTP daemon only. The summarizer and TTS profiles in `config.toml` must point at remote model backends reachable from the container.
+
+## Config lookup profiles
+
+Config lookup order:
+
+1. `--config /path/to/config.toml`
+2. `./config.toml`
+3. `~/.config/tts-summarizer/config.toml`
+4. built-in defaults
+
+Generate a remote-backend config:
+
+```bash
+tts-summarizer init-config --profile remote
+```
+
+Generate an Apple Silicon local MLX config:
+
+```bash
+tts-summarizer init-config --profile apple-local
+```
+
+Profiles are selected by `default_profile` under each section:
+
+```toml
+[summarizer]
+default_profile = "remote-qwen25"
+
+[tts]
+default_profile = "remote-kokoro"
+```
+
+Switch individual profiles by changing only the relevant `default_profile` value; the daemon can keep remote and local profile definitions in one config.
+
+## Apple local MLX notes
+
+Apple local profiles use `mlx_audio` in process and are intended for Apple Silicon Macs. Install the optional local audio dependencies when using local MLX TTS:
+
+```bash
+uv tool install 'git+https://github.com/sagebynature/tts-summarizer[mlx]'
+```
+
+The Apple local example keeps remote profiles too, so you can switch individual profiles without changing the daemon.
+
+## Run daemon
+
+```bash
+tts-summarizer serve --config config.toml
+```
 
 FastAPI OpenAPI docs are available while the daemon is running:
 
@@ -52,9 +99,19 @@ FastAPI OpenAPI docs are available while the daemon is running:
 - `http://127.0.0.1:9200/redoc`
 - `http://127.0.0.1:9200/openapi.json`
 
-## Send a request
+## Send request
 
-`/v1/speak` returns WAV bytes. Playback belongs to the client.
+`/v1/speak` returns WAV bytes. Playback example:
+
+```bash
+curl -sS -X POST http://127.0.0.1:9200/v1/speak \
+  -H 'Content-Type: application/json' \
+  -d '{"text":"This is a long answer to summarize before speaking."}' \
+  --output reply.wav
+ffplay -nodisp -autoexit reply.wav
+```
+
+CLI request helper:
 
 ```bash
 tts-summarizer speak --session_id demo "Codex finished."
@@ -62,17 +119,29 @@ tts-summarizer speak --session_id demo "Codex finished."
 
 Use `--summarize false` to send text directly to TTS. `--session_id` interrupts any previous playback for that session.
 
+## Check and stop
 
 ```bash
-curl -sS \
-  -H 'Content-Type: application/json' \
-  -H 'X-TTS-Caller: manual' \
-  -H 'X-TTS-Session-Id: demo' \
-  -d '{"text":"Codex finished.","summarize":true}' \
-  http://127.0.0.1:9200/v1/speak > speech.wav
+tts-summarizer health --config config.toml
+tts-summarizer stop --config config.toml
 ```
 
-Use `"summarize": false` to send text directly to TTS.
+## Development commands
+
+```bash
+uv sync --dev
+make build # uv build
+make test # uv run python -m unittest discover -s tests -v
+make typecheck # uvx ty check src tests
+make check # typecheck, test, build
+make run # uv run python -m tts_summarizer serve --config config.toml
+```
+
+Use another config during development:
+
+```bash
+make run CONFIG=/path/to/config.toml
+```
 
 ## Configure summarization models
 
@@ -100,6 +169,7 @@ Local example:
 default_profile = "kokoro"
 
 [tts.profiles.kokoro]
+backend = "mlx"
 model = "mlx-community/Kokoro-82M-bf16"
 
 [tts.profiles.kokoro.generate_kwargs]
@@ -129,27 +199,9 @@ response_format = "wav"
 
 Remote TTS posts to `{base_url}/audio/speech` and streams returned WAV bytes unchanged.
 
-## Check and stop
-
-```bash
-uv run tts-summarizer health --config config.toml
-uv run tts-summarizer stop --config config.toml
-```
-
-## Config lookup order
-
-1. `--config /path/to/config.toml`
-2. `./config.toml`
-3. `~/.config/tts-summarizer/config.toml`
-4. built-in defaults
-
-See `config.toml` for server settings, prompts, and model profiles.
-
 ## Logging
 
-The package ships `src/tts_summarizer/logging.conf`, using `colorlog.ColoredFormatter` like `korean-name-generator`.
-
-Use custom logging config TOML:
+The package ships `src/tts_summarizer/logging.conf`, using `colorlog.ColoredFormatter` like `korean-name-generator`. Use a custom logging config from TOML:
 
 ```toml
 [logging]
