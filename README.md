@@ -39,10 +39,12 @@ The remote profile expects your summarizer and TTS servers to expose OpenAI-comp
 git clone https://github.com/sagebynature/tts-summarizer
 cd tts-summarizer
 cp config.remote.example.toml config.toml
+# Edit config.toml so remote model base_url values are reachable from the container.
+# If the model servers run on the Docker host, use http://host.docker.internal:9000/v1.
 docker compose up
 ```
 
-Docker runs the HTTP daemon only. The summarizer and TTS profiles in `config.toml` must point at remote model backends reachable from the container.
+Docker runs the HTTP daemon only. summarizer TTS profiles in `config.toml` must point at remote model backends reachable from the container.
 
 ## Config lookup profiles
 
@@ -79,10 +81,10 @@ Switch individual profiles by changing only the relevant `default_profile` value
 
 ## Apple local MLX notes
 
-Apple local profiles use `mlx_audio` in process and are intended for Apple Silicon Macs. Install the optional local audio dependencies when using local MLX TTS:
+Apple local profiles use `mlx_audio` in process intended Apple Silicon Macs. Install optional local audio dependencies using local MLX TTS:
 
 ```bash
-uv tool install 'git+https://github.com/sagebynature/tts-summarizer[mlx]'
+uv tool install 'tts-summarizer[mlx] @ git+https://github.com/sagebynature/tts-summarizer'
 ```
 
 The Apple local example keeps remote profiles too, so you can switch individual profiles without changing the daemon.
