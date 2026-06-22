@@ -11,8 +11,9 @@ class ConfigTests(unittest.TestCase):
             root = Path(tmp)
             cfg = load_config(None, cwd=root / "cwd", home=root / "home")
         self.assertEqual(cfg.server.host, "127.0.0.1")
-        self.assertEqual(cfg.summarizer.max_words, 40)
-        self.assertIn("text-to-speech", cfg.summarizer.system_prompt)
+        default_summary = cfg.summarizer.profiles[cfg.summarizer.default_profile]
+        self.assertEqual(default_summary.max_words, 40)
+        self.assertIn("text-to-speech", default_summary.system_prompt)
         self.assertFalse(hasattr(cfg, "session"))
 
     def test_session_config_section_is_rejected(self):
@@ -25,37 +26,25 @@ class ConfigTests(unittest.TestCase):
             with self.assertRaises(ConfigError):
                 load_config(str(path), cwd=Path(tmp), home=Path(tmp))
 
-    def test_summarizer_endpoint_config_loads(self):
+    def test_summarizer_profiles_config_loads_named_models(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "config.toml"
             path.write_text(
                 "\n".join(
                     [
                         "[summarizer]",
+                        'default_profile = "fast"',
+                        "[summarizer.profiles.qwen]",
                         'base_url = "http://127.0.0.1:1234/v1"',
                         'api_key = "test-token"',
                         'model = "local-model"',
-                    ]
-                ),
-                encoding="utf-8",
-            )
-
-            cfg = load_config(str(path), cwd=Path(tmp), home=Path(tmp))
-
-        self.assertEqual(cfg.summarizer.base_url, "http://127.0.0.1:1234/v1")
-        self.assertEqual(cfg.summarizer.api_key, "test-token")
-        self.assertEqual(cfg.summarizer.model, "local-model")
-
-    def test_summarizer_extra_body_config_loads_nested_tables(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp) / "config.toml"
-            path.write_text(
-                "\n".join(
-                    [
-                        "[summarizer]",
-                        'model = "local-model"',
-                        "[summarizer.extra_body.chat_template_kwargs]",
+                        "max_words = 40",
+                        "[summarizer.profiles.qwen.extra_body.chat_template_kwargs]",
                         "enable_thinking = false",
+                        "[summarizer.profiles.fast]",
+                        'base_url = "http://127.0.0.1:9000/v1"',
+                        'model = "fast-model"',
+                        "max_words = 25",
                     ]
                 ),
                 encoding="utf-8",
@@ -63,10 +52,14 @@ class ConfigTests(unittest.TestCase):
 
             cfg = load_config(str(path), cwd=Path(tmp), home=Path(tmp))
 
+        self.assertEqual(cfg.summarizer.default_profile, "fast")
+        self.assertEqual(cfg.summarizer.profiles["qwen"].api_key, "test-token")
+        self.assertEqual(cfg.summarizer.profiles["qwen"].model, "local-model")
         self.assertEqual(
-            cfg.summarizer.extra_body,
+            cfg.summarizer.profiles["qwen"].extra_body,
             {"chat_template_kwargs": {"enable_thinking": False}},
         )
+        self.assertEqual(cfg.summarizer.profiles["fast"].max_words, 25)
 
     def test_audio_ffplay_backend_config_loads(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -117,13 +110,15 @@ class ConfigTests(unittest.TestCase):
             cwd.mkdir()
             (home / ".config" / "tts-summarizer").mkdir(parents=True)
             (home / ".config" / "tts-summarizer" / "config.toml").write_text(
-            '[tts.profiles.qwen.generate_kwargs]\nvoice = "UserVoice"\n', encoding="utf-8"
+                '[tts.profiles.qwen.generate_kwargs]\nvoice = "UserVoice"\n',
+                encoding="utf-8",
             )
             (cwd / "config.toml").write_text(
-            '[tts.profiles.qwen.generate_kwargs]\nvoice = "CwdVoice"\n', encoding="utf-8"
-        )
+                '[tts.profiles.qwen.generate_kwargs]\nvoice = "CwdVoice"\n',
+                encoding="utf-8",
+            )
             cfg = load_config(None, cwd=cwd, home=home)
-            self.assertEqual(cfg.tts.profiles["qwen"].generate_kwargs["voice"], "CwdVoice")
+        self.assertEqual(cfg.tts.profiles["qwen"].generate_kwargs["voice"], "CwdVoice")
 
     def test_explicit_missing_config_fails(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -135,12 +130,16 @@ class ConfigTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "config.toml"
             path.write_text(
-                '[summarizer]\nsystem_prompt = "custom system"\n', encoding="utf-8"
+                '[summarizer.profiles.default]\nsystem_prompt = "custom system"\n',
+                encoding="utf-8",
             )
 
             cfg = load_config(str(path), cwd=Path(tmp), home=Path(tmp))
 
-        self.assertEqual(cfg.summarizer.system_prompt, "custom system")
+        self.assertEqual(
+            cfg.summarizer.profiles[cfg.summarizer.default_profile].system_prompt,
+            "custom system",
+        )
 
 
 if __name__ == "__main__":

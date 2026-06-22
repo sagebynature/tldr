@@ -14,7 +14,11 @@ def _log_config(config: Config) -> None:
         ("source", config.source),
         ("host", config.server.host),
         ("port", config.server.port),
-        ("sum.model", config.summarizer.model),
+        ("sum.profile", config.summarizer.default_profile),
+        (
+            "sum.model",
+            config.summarizer.profiles[config.summarizer.default_profile].model,
+        ),
         ("tts.profile", config.tts.default_profile),
         ("tts.model", config.tts.profiles[config.tts.default_profile].model),
         ("audio.backend", config.audio.backend),

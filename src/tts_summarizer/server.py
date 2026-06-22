@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from dataclasses import replace
 import logging
 import os
 import socket
@@ -30,6 +29,7 @@ class SpeakRequestBody(BaseModel):
     metadata: dict[str, object] | None = None
     summarize: bool = True
     tts_profile: str | None = None
+    summarizer_profile: str | None = None
 
 
 class SummarizeRequestBody(BaseModel):
@@ -40,6 +40,7 @@ class SummarizeRequestBody(BaseModel):
     max_words: int | None = None
     temperature: float | None = None
     max_tokens: int | None = None
+    summarizer_profile: str | None = None
 
 
 class SummarizeResponseBody(BaseModel):
@@ -59,7 +60,9 @@ def synthesize_speech(request: SpeechRequest, summarizer, speech) -> Iterable[by
     logger.info("incoming text session=%s text=%r", request.session_key(), request.text)
     if request.summarize:
         logger.info("summarizing speech request session=%s", request.session_key())
-        text = summarizer.summarize(request.text)
+        text = summarizer.summarize(
+            request.text, profile_name=request.summarizer_profile
+        )
         logger.info(
             "summary ready session=%s input_chars=%s output_chars=%s changed=%s",
             request.session_key(),
@@ -87,13 +90,16 @@ def synthesize_speech(request: SpeechRequest, summarizer, speech) -> Iterable[by
 
 
 def _summary_request(payload: dict[str, object], config: Config):
-    unknown = sorted(set(payload) - (SUMMARY_OVERRIDE_KEYS | {"text"}))
+    unknown = sorted(set(payload) - (SUMMARY_OVERRIDE_KEYS | {"text", "summarizer_profile"}))
     if unknown:
         raise RequestError(f"unknown summarize request keys: {', '.join(unknown)}")
     text = payload.get("text")
     if not isinstance(text, str) or not text.strip():
         raise RequestError("summarize request requires non-empty text")
     overrides: dict[str, object] = {}
+    summarizer_profile = payload.get("summarizer_profile")
+    if summarizer_profile is not None and not isinstance(summarizer_profile, str):
+        raise RequestError("summarizer_profile must be a string")
     for key in ("word_threshold", "max_words", "max_tokens"):
         value = payload.get(key)
         if value is None:
@@ -106,7 +112,7 @@ def _summary_request(payload: dict[str, object], config: Config):
         if not isinstance(value, int | float) or isinstance(value, bool):
             raise RequestError("temperature must be a number")
         overrides["temperature"] = float(value)
-    return text, replace(config.summarizer, **overrides)
+    return text, summarizer_profile, overrides
 
 
 def create_app(config: Config, summarizer=None, speech=None) -> FastAPI:
@@ -145,13 +151,17 @@ def create_app(config: Config, summarizer=None, speech=None) -> FastAPI:
     @app.post("/v1/summarize", response_model=SummarizeResponseBody)
     def summarize(payload: SummarizeRequestBody):
         try:
-            text, summarizer_config = _summary_request(
+            text, summarizer_profile, overrides = _summary_request(
                 payload.model_dump(exclude_none=True), config
             )
         except RequestError as exc:
             return JSONResponse(status_code=400, content={"error": str(exc)})
-        backend = getattr(summarizer, "backend", None)
-        summary = Summarizer(summarizer_config, backend=backend).summarize(text)
+        try:
+            summary = summarizer.summarize(
+                text, profile_name=summarizer_profile, overrides=overrides
+            )
+        except ValueError as exc:
+            return JSONResponse(status_code=400, content={"error": str(exc)})
         return {"summary": summary, "changed": summary != text}
 
     @app.post("/shutdown")

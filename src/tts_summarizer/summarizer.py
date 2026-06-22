@@ -1,4 +1,5 @@
 from __future__ import annotations
+from dataclasses import replace
 
 from typing import Any, Callable, Protocol, cast
 from urllib.request import Request, urlopen
@@ -6,7 +7,7 @@ import json
 import logging
 import re
 
-from .config import SummarizerConfig
+from .config import SummarizerConfig, SummarizerProfileConfig
 
 
 logger = logging.getLogger(__name__)
@@ -15,7 +16,7 @@ URL_PATTERN = re.compile(r"https?://[^\s<>)\]}]+", re.IGNORECASE)
 
 class SummaryBackend(Protocol):
     def generate(
-        self, messages: list[dict[str, str]], config: SummarizerConfig
+        self, messages: list[dict[str, str]], config: SummarizerProfileConfig
     ) -> str: ...
 
 
@@ -28,7 +29,7 @@ class OpenAICompatibleBackend:
         self.urlopen = urlopen
         self.timeout = timeout
 
-    def generate(self, messages: list[dict[str, str]], config: SummarizerConfig) -> str:
+    def generate(self, messages: list[dict[str, str]], config: SummarizerProfileConfig) -> str:
         token_limits = (config.max_tokens, config.max_tokens * 2)
         content = ""
         for max_tokens in token_limits:
@@ -41,7 +42,7 @@ class OpenAICompatibleBackend:
         return content
 
     def _post_completion(
-        self, messages: list[dict[str, str]], config: SummarizerConfig, max_tokens: int
+        self, messages: list[dict[str, str]], config: SummarizerProfileConfig, max_tokens: int
     ):
         url = f"{config.base_url.rstrip('/')}/chat/completions"
         body = {
@@ -65,39 +66,56 @@ class Summarizer:
         self.config = config
         self.backend = backend or OpenAICompatibleBackend()
 
-    def summarize(self, text: str) -> str:
-        if not self.config.enabled:
+    def profile(
+        self, profile_name: str | None = None, overrides: dict[str, object] | None = None
+    ) -> SummarizerProfileConfig:
+        name = profile_name or self.config.default_profile
+        try:
+            profile = self.config.profiles[name]
+        except KeyError as exc:
+            raise ValueError(f"unknown summarizer profile: {name}") from exc
+        return replace(profile, **(overrides or {}))
+
+    def summarize(
+        self,
+        text: str,
+        profile_name: str | None = None,
+        overrides: dict[str, object] | None = None,
+    ) -> str:
+        config = self.profile(profile_name, overrides)
+        if not config.enabled:
             return text
-        if count_words(text) <= self.config.word_threshold:
+        if count_words(text) <= config.word_threshold:
             return text
         logger.info(
-            "summarizing text chars=%s words=%s prompt=%s",
+            "summarizing text chars=%s words=%s profile=%s prompt=%s",
             len(text),
             count_words(text),
-            self.config.system_prompt,
+            profile_name or self.config.default_profile,
+            config.system_prompt,
         )
         sanitized = replace_urls(text)
         messages = [
-            {"role": "system", "content": self.config.system_prompt},
+            {"role": "system", "content": config.system_prompt},
             {
                 "role": "user",
-                "content": self.config.user_prompt_template.format(
-                    max_words=self.config.max_words,
+                "content": config.user_prompt_template.format(
+                    max_words=config.max_words,
                     text=sanitized,
                 ),
             },
         ]
         try:
-            summary = self.backend.generate(messages, self.config).strip()
+            summary = self.backend.generate(messages, config).strip()
         except Exception:
             logger.exception("summary failed; using original text")
             return text
-        cleaned = clean_summary(summary, text, self.config)
+        cleaned = clean_summary(summary, text, config)
         logger.info("summary output preview=%r", preview(cleaned))
         return cleaned
 
 
-def clean_summary(summary: str, original: str, config: SummarizerConfig) -> str:
+def clean_summary(summary: str, original: str, config: SummarizerProfileConfig) -> str:
     cleaned = strip_thinking(summary).strip()
     sanitized = replace_urls(original)
     for prompt_part in (

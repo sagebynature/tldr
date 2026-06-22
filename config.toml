@@ -6,12 +6,13 @@ auto_start = true
 startup_timeout_ms = 3000
 request_timeout_ms = 5000
 
-
 [summarizer]
+default_profile = "qwen25"
+
+[summarizer.profiles.qwen25]
 enabled = true
 base_url = "http://127.0.0.1:9000/v1"
 api_key = "omlx"
-# model = "mlx-community/Qwen3-0.6B-4bit"
 model = "mlx-community/Qwen2.5-1.5B-Instruct-4bit"
 word_threshold = 0
 max_words = 40
@@ -30,11 +31,11 @@ Stop after the summary.
 {text}
 """
 
-[summarizer.extra_body.chat_template_kwargs]
+[summarizer.profiles.qwen25.extra_body.chat_template_kwargs]
 enable_thinking = false
 
 [tts]
-default_profile = "kokoro"
+default_profile = "qwen"
 
 [tts.profiles.qwen]
 model = "mlx-community/Qwen3-TTS-12Hz-1.7B-CustomVoice-8bit"
@@ -47,7 +48,7 @@ lang_code = "english"
 streaming_interval = 0.32
 
 [tts.profiles.kokoro]
-model = "mlx-community/Kokoro-82M-8bit"
+model = "mlx-community/Kokoro-82M-bf16"
 stream = true
 sample_rate = 24000
 

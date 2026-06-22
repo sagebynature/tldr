@@ -17,6 +17,7 @@ class SpeechRequest:
     metadata: dict[str, object] = field(default_factory=dict)
     summarize: bool = True
     tts_profile: str | None = None
+    summarizer_profile: str | None = None
 
     @classmethod
     def from_json(
@@ -31,6 +32,7 @@ class SpeechRequest:
         metadata = data.get("metadata")
         summarize = data.get("summarize")
         tts_profile = data.get("tts_profile")
+        summarizer_profile = data.get("summarizer_profile")
         clean_metadata: dict[str, object] = {}
         if isinstance(metadata, dict):
             clean_metadata = {str(key): value for key, value in metadata.items()}
@@ -41,6 +43,11 @@ class SpeechRequest:
             metadata=clean_metadata,
             summarize=summarize if isinstance(summarize, bool) else True,
             tts_profile=tts_profile.strip() if isinstance(tts_profile, str) else None,
+            summarizer_profile=(
+                summarizer_profile.strip()
+                if isinstance(summarizer_profile, str)
+                else None
+            ),
         )
 
     def to_json(self) -> dict[str, object]:
@@ -49,6 +56,7 @@ class SpeechRequest:
             "metadata": self.metadata,
             "summarize": self.summarize,
             "tts_profile": self.tts_profile,
+            "summarizer_profile": self.summarizer_profile,
         }
 
     def session_key(self) -> str:

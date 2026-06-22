@@ -3,14 +3,18 @@ import unittest.mock
 
 from fastapi.testclient import TestClient
 
-from tts_summarizer.config import Config
+from tts_summarizer.config import Config, SummarizerConfig, SummarizerProfileConfig
 from tts_summarizer.server import create_app, run_server
 from tts_summarizer.speech import AudioChunk
 from tts_summarizer.summarizer import Summarizer
 
 
 class FakeSummarizer:
-    def summarize(self, text):
+    def __init__(self):
+        self.profile_name = None
+
+    def summarize(self, text, profile_name=None, overrides=None):
+        self.profile_name = profile_name
         return f"summary: {text}"
 
 
@@ -167,6 +171,19 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(response.headers["content-type"], "audio/wav")
         self.assertEqual(speech.text, "summary: hello")
 
+    def test_fastapi_speak_route_passes_summarizer_profile(self):
+        summarizer = FakeSummarizer()
+        client = TestClient(
+            create_app(Config(), summarizer=summarizer, speech=CapturingSpeech())
+        )
+
+        response = client.post(
+            "/v1/speak", json={"text": "hello", "summarizer_profile": "fast"}
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(summarizer.profile_name, "fast")
+
     def test_fastapi_speak_route_can_skip_summarizer_for_tts_testing(self):
         speech = CapturingSpeech()
         client = TestClient(
@@ -276,8 +293,46 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(backend.config.max_words, 12)
         self.assertEqual(backend.config.temperature, 0.7)
         self.assertEqual(backend.config.max_tokens, 33)
-        self.assertEqual(backend.config.model, Config().summarizer.model)
+        default_summary = Config().summarizer.profiles[Config().summarizer.default_profile]
+        self.assertEqual(backend.config.model, default_summary.model)
         self.assertIn("supplied URL", backend.messages[-1]["content"])
+
+    def test_fastapi_summarize_route_selects_summarizer_profile(self):
+        class CapturingBackend:
+            def __init__(self):
+                self.config = None
+
+            def generate(self, messages, config):
+                self.config = config
+                return "profile summary"
+
+        backend = CapturingBackend()
+        config = Config(
+            summarizer=SummarizerConfig(
+                default_profile="default",
+                profiles={
+                    "default": SummarizerProfileConfig(model="default-model"),
+                    "fast": SummarizerProfileConfig(model="fast-model", max_words=20),
+                },
+            )
+        )
+        client = TestClient(
+            create_app(
+                config,
+                summarizer=Summarizer(config.summarizer, backend=backend),
+                speech=CapturingSpeech(),
+            )
+        )
+
+        response = client.post(
+            "/v1/summarize",
+            json={"text": "hello world", "summarizer_profile": "fast", "max_words": 12},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        assert backend.config is not None
+        self.assertEqual(backend.config.model, "fast-model")
+        self.assertEqual(backend.config.max_words, 12)
 
     def test_fastapi_summarize_route_rejects_disallowed_override(self):
         client = TestClient(

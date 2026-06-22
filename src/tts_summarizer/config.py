@@ -28,7 +28,7 @@ class ServerConfig:
 
 
 @dataclass(frozen=True)
-class SummarizerConfig:
+class SummarizerProfileConfig:
     enabled: bool = True
     base_url: str = "http://127.0.0.1:1234/v1"
     api_key: str = ""
@@ -40,6 +40,16 @@ class SummarizerConfig:
     extra_body: dict[str, object] = field(default_factory=dict)
     system_prompt: str = DEFAULT_SYSTEM_PROMPT
     user_prompt_template: str = DEFAULT_USER_PROMPT_TEMPLATE
+
+
+@dataclass(frozen=True)
+class SummarizerConfig:
+    default_profile: str = "default"
+    profiles: dict[str, SummarizerProfileConfig] = field(
+        default_factory=lambda: {
+            "default": SummarizerProfileConfig(),
+        }
+    )
 
 
 @dataclass(frozen=True)
@@ -98,6 +108,27 @@ def _merge_dataclass(instance: Any, values: dict[str, Any]) -> Any:
     return replace(instance, **values)
 
 
+def _merge_summarizer_config(
+    instance: SummarizerConfig, values: dict[str, Any]
+) -> SummarizerConfig:
+    valid = {"default_profile", "profiles"}
+    unknown = sorted(set(values) - valid)
+    if unknown:
+        raise ConfigError(f"unknown config keys for SummarizerConfig: {', '.join(unknown)}")
+    profiles = {
+        name: _merge_dataclass(SummarizerProfileConfig(), profile)
+        for name, profile in values.get("profiles", {}).items()
+    }
+    merged = replace(
+        instance,
+        default_profile=values.get("default_profile", instance.default_profile),
+        profiles=profiles or instance.profiles,
+    )
+    if merged.default_profile not in merged.profiles:
+        raise ConfigError(f"unknown default summarizer profile: {merged.default_profile}")
+    return merged
+
+
 def _merge_tts_config(instance: TtsConfig, values: dict[str, Any]) -> TtsConfig:
     valid = {"default_profile", "profiles"}
     unknown = sorted(set(values) - valid)
@@ -125,7 +156,7 @@ def _apply(raw: dict[str, Any], source: Path | None) -> Config:
         raise ConfigError(f"unknown sections: {', '.join(unknown_sections)}")
     return Config(
         server=_merge_dataclass(cfg.server, raw.get("server", {})),
-        summarizer=_merge_dataclass(cfg.summarizer, raw.get("summarizer", {})),
+        summarizer=_merge_summarizer_config(cfg.summarizer, raw.get("summarizer", {})),
         tts=_merge_tts_config(cfg.tts, raw.get("tts", {})),
         audio=_merge_dataclass(cfg.audio, raw.get("audio", {})),
         logging=_merge_dataclass(cfg.logging, raw.get("logging", {})),

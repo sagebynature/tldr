@@ -2,13 +2,17 @@ import json
 import unittest
 from unittest.mock import patch
 
-from tts_summarizer.config import SummarizerConfig
+from tts_summarizer.config import SummarizerConfig, SummarizerProfileConfig
 from tts_summarizer.summarizer import (
     OpenAICompatibleBackend,
     Summarizer,
     count_words,
     replace_urls,
 )
+
+
+def summary_config(**kwargs):
+    return SummarizerConfig(profiles={"default": SummarizerProfileConfig(**kwargs)})
 
 
 class FakeBackend:
@@ -38,13 +42,13 @@ class SummarizerTests(unittest.TestCase):
 
     def test_threshold_skips_model(self):
         backend = FakeBackend()
-        summarizer = Summarizer(SummarizerConfig(word_threshold=10), backend=backend)
+        summarizer = Summarizer(summary_config(word_threshold=10), backend=backend)
         self.assertEqual(summarizer.summarize("short text"), "short text")
         self.assertEqual(backend.prompt, "")
 
     def test_prompt_template_used(self):
         backend = FakeBackend()
-        config = SummarizerConfig(
+        config = summary_config(
             word_threshold=0, user_prompt_template="Limit {max_words}: {text}"
         )
         summarizer = Summarizer(config, backend=backend)
@@ -53,7 +57,7 @@ class SummarizerTests(unittest.TestCase):
 
     def test_summarizer_sends_sanitized_text_to_backend(self):
         backend = FakeBackend()
-        config = SummarizerConfig(
+        config = summary_config(
             word_threshold=0,
             user_prompt_template="Say {max_words}: {text}",
         )
@@ -64,12 +68,33 @@ class SummarizerTests(unittest.TestCase):
         )
         self.assertEqual(backend.prompt, "Say 40: open supplied URL")
 
+    def test_summarizer_selects_named_profile(self):
+        backend = FakeBackend()
+        config = SummarizerConfig(
+            default_profile="default",
+            profiles={
+                "default": SummarizerProfileConfig(word_threshold=10),
+                "fast": SummarizerProfileConfig(
+                    word_threshold=0,
+                    max_words=12,
+                    user_prompt_template="Fast {max_words}: {text}",
+                ),
+            },
+        )
+        summarizer = Summarizer(config, backend=backend)
+
+        self.assertEqual(
+            summarizer.summarize("open https://example.test/path", profile_name="fast"),
+            "short result",
+        )
+        self.assertEqual(backend.prompt, "Fast 12: open supplied URL")
+
     def test_sanitized_user_prompt_echo_is_stripped_from_summary(self):
         class EchoBackend:
             def generate(self, messages, config):
                 return f"{messages[-1]['content']}\n\nactual summary"
 
-        config = SummarizerConfig(
+        config = summary_config(
             word_threshold=0,
             user_prompt_template="Say {max_words}: {text}",
         )
@@ -84,7 +109,7 @@ class SummarizerTests(unittest.TestCase):
             def generate(self, messages, config):
                 return messages[-1]["content"]
 
-        config = SummarizerConfig(
+        config = summary_config(
             word_threshold=0,
             user_prompt_template="Say {max_words}: {text}",
         )
@@ -100,9 +125,7 @@ class SummarizerTests(unittest.TestCase):
             def generate(self, messages, config):
                 return config.system_prompt
 
-        summarizer = Summarizer(
-            SummarizerConfig(word_threshold=0), backend=EchoBackend()
-        )
+        summarizer = Summarizer(summary_config(word_threshold=0), backend=EchoBackend())
         self.assertEqual(
             summarizer.summarize("actual request text"), "actual request text"
         )
@@ -112,9 +135,7 @@ class SummarizerTests(unittest.TestCase):
             def generate(self, messages, config):
                 return f"{config.system_prompt}\n\nactual summary"
 
-        summarizer = Summarizer(
-            SummarizerConfig(word_threshold=0), backend=EchoBackend()
-        )
+        summarizer = Summarizer(summary_config(word_threshold=0), backend=EchoBackend())
         self.assertEqual(summarizer.summarize("actual request text"), "actual summary")
 
     def test_thinking_block_is_stripped_from_summary(self):
@@ -122,9 +143,7 @@ class SummarizerTests(unittest.TestCase):
             def generate(self, messages, config):
                 return "<think>private reasoning</think>spoken result"
 
-        summarizer = Summarizer(
-            SummarizerConfig(word_threshold=0), backend=ThinkingBackend()
-        )
+        summarizer = Summarizer(summary_config(word_threshold=0), backend=ThinkingBackend())
         self.assertEqual(summarizer.summarize("actual request text"), "spoken result")
 
     def test_thinking_only_output_falls_back_to_original_text(self):
@@ -132,9 +151,7 @@ class SummarizerTests(unittest.TestCase):
             def generate(self, messages, config):
                 return "<think>unfinished reasoning"
 
-        summarizer = Summarizer(
-            SummarizerConfig(word_threshold=0), backend=ThinkingBackend()
-        )
+        summarizer = Summarizer(summary_config(word_threshold=0), backend=ThinkingBackend())
         self.assertEqual(
             summarizer.summarize("actual request text"), "actual request text"
         )
@@ -159,7 +176,7 @@ class SummarizerTests(unittest.TestCase):
         backend = OpenAICompatibleBackend(urlopen=fake_urlopen)
         result = backend.generate(
             [{"role": "user", "content": "hello"}],
-            SummarizerConfig(
+            SummarizerProfileConfig(
                 base_url="http://localhost:1234/v1/",
                 api_key="",
                 model="local-model",
@@ -184,7 +201,6 @@ class SummarizerTests(unittest.TestCase):
             },
         )
 
-
     def test_openai_backend_merges_extra_body(self):
         calls = []
 
@@ -205,7 +221,7 @@ class SummarizerTests(unittest.TestCase):
         backend = OpenAICompatibleBackend(urlopen=fake_urlopen)
         backend.generate(
             [{"role": "user", "content": "hello"}],
-            SummarizerConfig(
+            SummarizerProfileConfig(
                 model="local-model",
                 extra_body={"chat_template_kwargs": {"enable_thinking": False}},
             ),
@@ -240,11 +256,12 @@ class SummarizerTests(unittest.TestCase):
         backend = OpenAICompatibleBackend(urlopen=fake_urlopen)
         result = backend.generate(
             [{"role": "user", "content": "hello"}],
-            SummarizerConfig(model="local-model", max_tokens=50),
+            SummarizerProfileConfig(model="local-model", max_tokens=50),
         )
 
         self.assertEqual(result, "complete summary")
         self.assertEqual([call["max_tokens"] for call in calls], [50, 100])
+
     def test_openai_backend_posts_auth_when_configured(self):
         calls = []
 
@@ -265,7 +282,7 @@ class SummarizerTests(unittest.TestCase):
         backend = OpenAICompatibleBackend(urlopen=fake_urlopen)
         backend.generate(
             [{"role": "user", "content": "hello"}],
-            SummarizerConfig(api_key="test-token"),
+            SummarizerProfileConfig(api_key="test-token"),
         )
 
         self.assertEqual(calls[0].headers["Authorization"], "Bearer test-token")
@@ -275,10 +292,9 @@ class SummarizerTests(unittest.TestCase):
             def generate(self, messages, config):
                 raise RuntimeError("boom")
 
-        summarizer = Summarizer(
-            SummarizerConfig(word_threshold=0), backend=BrokenBackend()
-        )
-        with patch("tts_summarizer.summarizer.logger.exception"):
+        summarizer = Summarizer(summary_config(word_threshold=0), backend=BrokenBackend())
+
+        with patch("tts_summarizer.summarizer.logger"):
             self.assertEqual(summarizer.summarize("keep this"), "keep this")
 
 
