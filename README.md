@@ -1,14 +1,12 @@
-<div align="center"><pre>
-  ███████╗ ██████╗██╗  ██╗ ██████╗ ██████╗ ██████╗ ██╗███████╗███████╗
-  ██╔════╝██╔════╝██║  ██║██╔═══██╗██╔══██╗██╔══██╗██║██╔════╝██╔════╝
-  █████╗  ██║     ███████║██║   ██║██████╔╝██████╔╝██║█████╗  █████╗
-  ██╔══╝  ██║     ██╔══██║██║   ██║██╔══██╗██╔══██╗██║██╔══╝  ██╔══╝
-  ███████╗╚██████╗██║  ██║╚██████╔╝██████╔╝██║  ██║██║███████╗██║
-  ╚══════╝ ╚═════╝╚═╝  ╚═╝ ╚═════╝ ╚═════╝ ╚═╝  ╚═╝╚═╝╚══════╝╚═╝
-                  Short agent replies, spoken cleanly
-</pre></div>
+<div align="center">
+# TLDR
 
-# TL;DR
+**Short agent replies, spoken cleanly**
+</div>
+
+---
+
+## What is "TL;DR"?
 
 Not every agent response is speech friendly. Responses are often too long, and
 they frequently include details that are useful on screen but awkward out loud:

@@ -12,7 +12,7 @@ class ConfigError(ValueError):
 
 
 EXAMPLE_CONFIG_RESOURCES = {
-    "config.apple-local.example.toml": "config.apple-local.example.toml",
+    "config.local.example.toml": "config.local.example.toml",
     "config.remote.example.toml": "config.remote.example.toml",
 }
 

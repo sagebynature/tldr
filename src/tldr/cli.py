@@ -20,7 +20,8 @@ from .installer import install_hook
 DEFAULT_SPEAK_CONFIG = "~/.config/tldr/config.toml"
 DEFAULT_USER_CONFIG = Path("~/.config/tldr/config.toml")
 CONFIG_PROFILE_RESOURCES = {
-    "apple-local": "config.apple-local.example.toml",
+    "apple-local": "config.local.example.toml",
+    "local": "config.local.example.toml",
     "remote": "config.remote.example.toml",
 }
 

@@ -58,3 +58,17 @@ sample_rate = 24000
 voice = "af_heart"
 lang_code = "a"
 response_format = "wav"
+
+
+[tts.profiles.remote-kokoro]
+backend = "remote"
+base_url = "http://127.0.0.1:9000/v1"
+api_key = "omlx"
+model = "mlx-community/Kokoro-82M-bf16"
+stream = true
+sample_rate = 24000
+
+[tts.profiles.remote-kokoro.generate_kwargs]
+voice = "af_heart"
+lang_code = "a"
+response_format = "wav"
