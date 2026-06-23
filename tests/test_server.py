@@ -315,7 +315,7 @@ class ServerTests(unittest.TestCase):
         response = client.post(
             "/v1/summarize",
             json={
-                "text": "Read HTTPS://example.test/private.",
+                "text": "Read [private docs](HTTPS://example.test/private).",
                 "word_threshold": 0,
                 "max_words": 12,
                 "temperature": 0.7,
@@ -334,7 +334,7 @@ class ServerTests(unittest.TestCase):
             Config().summarizer.default_profile
         ]
         self.assertEqual(backend.config.model, default_summary.model)
-        self.assertIn("supplied URL", backend.messages[-1]["content"])
+        self.assertIn("private docs", backend.messages[-1]["content"])
 
     def test_fastapi_summarize_route_selects_summarizer_profile(self):
         class CapturingBackend:

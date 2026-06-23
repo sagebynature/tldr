@@ -6,12 +6,13 @@ from urllib.request import Request, urlopen
 import json
 import logging
 import re
+from mdclense.parser import MarkdownParser
 
 from .config import SummarizerConfig, SummarizerProfileConfig
 
 
 logger = logging.getLogger(__name__)
-URL_PATTERN = re.compile(r"https?://[^\s<>)\]}]+", re.IGNORECASE)
+MARKDOWN_PARSER = MarkdownParser()
 
 
 class SummaryBackend(Protocol):
@@ -20,8 +21,8 @@ class SummaryBackend(Protocol):
     ) -> str: ...
 
 
-def replace_urls(text: str) -> str:
-    return URL_PATTERN.sub("supplied URL", text)
+def markdown_to_plain_text(text: str) -> str:
+    return " ".join(MARKDOWN_PARSER.parse(text).split())
 
 
 class OpenAICompatibleBackend:
@@ -102,7 +103,7 @@ class Summarizer:
             count_words(text),
             profile_name or self.config.default_profile,
         )
-        sanitized = replace_urls(text)
+        sanitized = markdown_to_plain_text(text)
         messages = [
             {"role": "system", "content": config.system_prompt},
             {
@@ -125,7 +126,7 @@ class Summarizer:
 
 def clean_summary(summary: str, original: str, config: SummarizerProfileConfig) -> str:
     cleaned = strip_thinking(summary).strip()
-    sanitized = replace_urls(original)
+    sanitized = markdown_to_plain_text(original)
     for prompt_part in (
         config.system_prompt,
         config.user_prompt_template.format(max_words=config.max_words, text=original),

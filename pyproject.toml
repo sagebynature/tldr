@@ -9,7 +9,12 @@ description = "Harness-neutral local speech brief daemon for agent responses"
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [{ name = "sagebynature" }]
-dependencies = ["colorlog>=6.10.1", "fastapi", "uvicorn"]
+dependencies = [
+    "colorlog>=6.10.1",
+    "fastapi",
+    "mdclense>=0.1.2",
+    "uvicorn",
+]
 
 [project.optional-dependencies]
 mlx = ["mlx-audio; platform_system == 'Darwin' and platform_machine == 'arm64'"]

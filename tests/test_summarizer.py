@@ -7,7 +7,7 @@ from tldr.summarizer import (
     OpenAICompatibleBackend,
     Summarizer,
     count_words,
-    replace_urls,
+    markdown_to_plain_text,
 )
 
 
@@ -28,18 +28,10 @@ class SummarizerTests(unittest.TestCase):
     def test_count_words(self):
         self.assertEqual(count_words("one two\nthree"), 3)
 
-    def test_replace_urls_replaces_http_and_https(self):
+    def test_markdown_to_plain_text_strips_markdown_formatting(self):
         self.assertEqual(
-            replace_urls("Read http://example.test/a https://example.test/b?x=1."),
-            "Read supplied URL supplied URL",
-        )
-
-    def test_replace_urls_replaces_case_insensitive_http_schemes(self):
-        self.assertEqual(
-            replace_urls(
-                "Open HTTPS://private.example/token and Http://Example.test/path"
-            ),
-            "Open supplied URL and supplied URL",
+            markdown_to_plain_text("# Done\n\n- **Ship** [docs](https://example.test)"),
+            "Done Ship docs",
         )
 
     def test_threshold_skips_model(self):
@@ -57,7 +49,7 @@ class SummarizerTests(unittest.TestCase):
         self.assertEqual(summarizer.summarize("long enough"), "short result")
         self.assertEqual(backend.prompt, "Limit 40: long enough")
 
-    def test_summarizer_sends_sanitized_text_to_backend(self):
+    def test_summarizer_sends_plain_text_to_backend(self):
         backend = FakeBackend()
         config = summary_config(
             word_threshold=0,
@@ -66,9 +58,10 @@ class SummarizerTests(unittest.TestCase):
         summarizer = Summarizer(config, backend=backend)
 
         self.assertEqual(
-            summarizer.summarize("open https://example.test/path"), "short result"
+            summarizer.summarize("# Done\n\nOpen [docs](https://example.test/path)"),
+            "short result",
         )
-        self.assertEqual(backend.prompt, "Say 40: open supplied URL")
+        self.assertEqual(backend.prompt, "Say 40: Done Open docs")
 
     def test_summarizer_selects_named_profile(self):
         backend = FakeBackend()
@@ -86,10 +79,10 @@ class SummarizerTests(unittest.TestCase):
         summarizer = Summarizer(config, backend=backend)
 
         self.assertEqual(
-            summarizer.summarize("open https://example.test/path", profile_name="fast"),
+            summarizer.summarize("open **docs**", profile_name="fast"),
             "short result",
         )
-        self.assertEqual(backend.prompt, "Fast 12: open supplied URL")
+        self.assertEqual(backend.prompt, "Fast 12: open docs")
 
     def test_sanitized_user_prompt_echo_is_stripped_from_summary(self):
         class EchoBackend:
@@ -102,9 +95,7 @@ class SummarizerTests(unittest.TestCase):
         )
         summarizer = Summarizer(config, backend=EchoBackend())
 
-        self.assertEqual(
-            summarizer.summarize("open https://example.test/path"), "actual summary"
-        )
+        self.assertEqual(summarizer.summarize("Open **docs**"), "actual summary")
 
     def test_sanitized_user_prompt_echo_only_falls_back_to_original_text(self):
         class EchoBackend:
@@ -118,8 +109,8 @@ class SummarizerTests(unittest.TestCase):
         summarizer = Summarizer(config, backend=EchoBackend())
 
         self.assertEqual(
-            summarizer.summarize("open https://example.test/path"),
-            "open https://example.test/path",
+            summarizer.summarize("Open **docs**"),
+            "Open **docs**",
         )
 
     def test_system_prompt_echo_falls_back_to_original_text(self):
