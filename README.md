@@ -1,9 +1,5 @@
 <div align="center">
-
-# TL;DR
-
-**Short agent replies, spoken cleanly**
-
+<img width="1672" height="941" alt="image" src="https://github.com/user-attachments/assets/0bf962c5-713b-4de7-8e71-363afafc539b" />
 </div>
 
 ---
