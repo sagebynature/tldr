@@ -44,7 +44,7 @@ included for common agent harnesses so completions can be spoken automatically.
 Install the CLI from GitHub:
 
 ```bash
-uv tool install git+https://github.com/sagebynature/tts-summarizer
+uv tool install git+https://github.com/sagebynature/tldr
 ```
 
 From a local checkout:
@@ -56,7 +56,7 @@ uv tool install .
 For local Apple Silicon MLX audio profiles, install optional extras:
 
 ```bash
-uv tool install 'tldr[mlx,kokoro] @ git+https://github.com/sagebynature/tts-summarizer'
+uv tool install 'tldr[mlx,kokoro] @ git+https://github.com/sagebynature/tldr'
 ```
 
 Only the `tldr` command is installed.
@@ -92,7 +92,6 @@ Config lookup order:
 1. `--config /path/to/config.toml`
 2. `./config.toml`
 3. `~/.config/tldr/config.toml`
-4. `~/.config/tts-summarizer/config.toml`
 5. Built-in defaults
 
 The checked-in `config.toml` uses `http://127.0.0.1:9000/v1` for the

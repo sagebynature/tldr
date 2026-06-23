@@ -214,7 +214,4 @@ def load_config(
     user_config = home / ".config" / "tldr" / "config.toml"
     if user_config.exists():
         return _apply(_read(user_config), user_config)
-    legacy_user_config = home / ".config" / "tts-summarizer" / "config.toml"
-    if legacy_user_config.exists():
-        return _apply(_read(legacy_user_config), legacy_user_config)
     return Config()
