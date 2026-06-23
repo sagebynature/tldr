@@ -25,7 +25,7 @@ def _copy_hook(harness: str, destination: Path) -> None:
         shutil.copyfile(source_tree_hook, destination)
         return
 
-    resource = resources.files("tts_summarizer") / "hooks" / filename
+    resource = resources.files("echobrief") / "hooks" / filename
     with resources.as_file(resource) as source:
         shutil.copyfile(source, destination)
 
@@ -162,7 +162,7 @@ def _install_claude(home: Path) -> Path:
 
 def _install_omp(home: Path) -> Path:
     install_dir = home / ".omp" / "agent" / "extensions"
-    installed_hook = install_dir / "tts-summarizer.ts"
+    installed_hook = install_dir / "echobrief.ts"
 
     install_dir.mkdir(parents=True, exist_ok=True)
     _copy_hook("omp", installed_hook)
@@ -171,7 +171,7 @@ def _install_omp(home: Path) -> Path:
 
 def _install_pi(home: Path) -> Path:
     install_dir = home / ".pi" / "agent" / "extensions"
-    installed_hook = install_dir / "tts-summarizer.ts"
+    installed_hook = install_dir / "echobrief.ts"
 
     install_dir.mkdir(parents=True, exist_ok=True)
     _copy_hook("pi", installed_hook)
@@ -230,7 +230,7 @@ def _ensure_hermes_config_entry(config_yaml: Path, installed_hook: Path) -> None
 
 def _install_hermes(home: Path) -> Path:
     hermes_dir = home / ".hermes"
-    install_dir = hermes_dir / "agent-hooks" / "tts-summarizer"
+    install_dir = hermes_dir / "agent-hooks" / "echobrief"
     installed_hook = install_dir / "hermes_tts.py"
 
     install_dir.mkdir(parents=True, exist_ok=True)

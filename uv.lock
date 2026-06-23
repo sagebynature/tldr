@@ -369,6 +369,56 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/a2/55/8f8cab2afd404cf578136ef2cc5dfb50baa1761b68c9da1fb1e4eed343c9/docopt-0.6.2.tar.gz", hash = "sha256:49b3a825280bd66b3aa83585ef59c4a8c82f2c8a522dbe754a8bc8d08c85c491", size = 25901, upload-time = "2014-06-16T11:18:57.406Z" }
 
 [[package]]
+name = "echobrief"
+version = "0.0.1"
+source = { editable = "." }
+dependencies = [
+    { name = "colorlog" },
+    { name = "fastapi" },
+    { name = "uvicorn" },
+]
+
+[package.optional-dependencies]
+kokoro = [
+    { name = "espeakng-loader" },
+    { name = "misaki" },
+    { name = "num2words" },
+    { name = "phonemizer-fork" },
+    { name = "spacy" },
+]
+mlx = [
+    { name = "mlx-audio", marker = "platform_machine == 'arm64' and sys_platform == 'darwin'" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "httpx" },
+    { name = "ruff" },
+    { name = "ty" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "colorlog", specifier = ">=6.10.1" },
+    { name = "espeakng-loader", marker = "extra == 'kokoro'" },
+    { name = "fastapi" },
+    { name = "misaki", marker = "extra == 'kokoro'" },
+    { name = "mlx-audio", marker = "platform_machine == 'arm64' and sys_platform == 'darwin' and extra == 'mlx'" },
+    { name = "num2words", marker = "extra == 'kokoro'" },
+    { name = "phonemizer-fork", marker = "extra == 'kokoro'" },
+    { name = "spacy", marker = "extra == 'kokoro'" },
+    { name = "uvicorn" },
+]
+provides-extras = ["mlx", "kokoro"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "httpx" },
+    { name = "ruff", specifier = ">=0.5" },
+    { name = "ty", specifier = "==0.0.23" },
+]
+
+[[package]]
 name = "espeakng-loader"
 version = "0.2.4"
 source = { registry = "https://pypi.org/simple" }
@@ -1865,56 +1915,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/aa/7c/8240f612819718100a9346dc28dea6a11370c3ca9c8c6eabadd3dea4ef29/transformers-5.12.1.tar.gz", hash = "sha256:679ee731c8225347889ad4fb3b2c926a62e9da3b7d284e9d12c791da7272466b", size = 8924054, upload-time = "2026-06-15T17:27:50.604Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/df/56/bbd60dd8668055803bf8ba55a81f9b8a8b31497f620109a9671d26a2076d/transformers-5.12.1-py3-none-any.whl", hash = "sha256:2a5e109d2021265df7098ffbb738295acaf5ad256f12cbc586db2ea4dcbb1a8a", size = 11150587, upload-time = "2026-06-15T17:27:46.679Z" },
-]
-
-[[package]]
-name = "tts-summarizer"
-version = "0.0.1"
-source = { virtual = "." }
-dependencies = [
-    { name = "colorlog" },
-    { name = "fastapi" },
-    { name = "uvicorn" },
-]
-
-[package.optional-dependencies]
-kokoro = [
-    { name = "espeakng-loader" },
-    { name = "misaki" },
-    { name = "num2words" },
-    { name = "phonemizer-fork" },
-    { name = "spacy" },
-]
-mlx = [
-    { name = "mlx-audio", marker = "platform_machine == 'arm64' and sys_platform == 'darwin'" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "httpx" },
-    { name = "ruff" },
-    { name = "ty" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "colorlog", specifier = ">=6.10.1" },
-    { name = "espeakng-loader", marker = "extra == 'kokoro'" },
-    { name = "fastapi" },
-    { name = "misaki", marker = "extra == 'kokoro'" },
-    { name = "mlx-audio", marker = "platform_machine == 'arm64' and sys_platform == 'darwin' and extra == 'mlx'" },
-    { name = "num2words", marker = "extra == 'kokoro'" },
-    { name = "phonemizer-fork", marker = "extra == 'kokoro'" },
-    { name = "spacy", marker = "extra == 'kokoro'" },
-    { name = "uvicorn" },
-]
-provides-extras = ["mlx", "kokoro"]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "httpx" },
-    { name = "ruff", specifier = ">=0.5" },
-    { name = "ty", specifier = "==0.0.23" },
 ]
 
 [[package]]

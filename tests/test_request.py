@@ -1,6 +1,6 @@
 import unittest
 
-from tts_summarizer.request import RequestError, SpeechRequest
+from echobrief.request import RequestError, SpeechRequest
 
 
 class RequestTests(unittest.TestCase):

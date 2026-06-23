@@ -21,7 +21,7 @@ DEFAULT_USER_PROMPT_TEMPLATE = """Write one complete spoken summary in {max_word
 class ServerConfig:
     host: str = "127.0.0.1"
     port: int = 0
-    state_dir: str = "~/.cache/tts-summarizer"
+    state_dir: str = "~/.cache/echobrief"
     auto_start: bool = True
     startup_timeout_ms: int = 3000
     request_timeout_ms: int = 5000
@@ -184,7 +184,10 @@ def load_config(
     cwd_config = cwd / "config.toml"
     if cwd_config.exists():
         return _apply(_read(cwd_config), cwd_config)
-    user_config = home / ".config" / "tts-summarizer" / "config.toml"
+    user_config = home / ".config" / "echobrief" / "config.toml"
     if user_config.exists():
         return _apply(_read(user_config), user_config)
+    legacy_user_config = home / ".config" / "tts-summarizer" / "config.toml"
+    if legacy_user_config.exists():
+        return _apply(_read(legacy_user_config), legacy_user_config)
     return Config()

@@ -3,8 +3,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tts_summarizer.config import load_config
-from tts_summarizer.state import read_state, write_state
+from echobrief.config import load_config
+from echobrief.state import read_state, write_state
 
 
 class StateClientTests(unittest.TestCase):

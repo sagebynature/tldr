@@ -40,7 +40,7 @@ def _patch_kokoro_sinegen() -> None:
         return
 
     sine_gen = istftnet.SineGen
-    if getattr(sine_gen, "_tts_summarizer_patched", False):
+    if getattr(sine_gen, "_echobrief_patched", False):
         return
 
     mx = istftnet.mx
@@ -63,7 +63,7 @@ def _patch_kokoro_sinegen() -> None:
         noise = noise_amp * mx.random.normal(sine_waves.shape)
         return sine_waves * uv + noise, uv, noise
 
-    setattr(sine_gen, "_tts_summarizer_patched", True)
+    setattr(sine_gen, "_echobrief_patched", True)
     setattr(sine_gen, "__call__", patched_call)
 
 

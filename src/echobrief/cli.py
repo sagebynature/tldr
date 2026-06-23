@@ -17,8 +17,9 @@ from .server import run_server
 from .installer import install_hook
 
 
-DEFAULT_SPEAK_CONFIG = "~/.config/tts-summarizer/config.toml"
-DEFAULT_USER_CONFIG = Path("~/.config/tts-summarizer/config.toml")
+DEFAULT_SPEAK_CONFIG = "~/.config/echobrief/config.toml"
+LEGACY_SPEAK_CONFIG = "~/.config/tts-summarizer/config.toml"
+DEFAULT_USER_CONFIG = Path("~/.config/echobrief/config.toml")
 CONFIG_PROFILE_RESOURCES = {
     "remote": "config.remote.example.toml",
     "apple-local": "config.apple-local.example.toml",
@@ -41,6 +42,9 @@ def _load_speak_config(path: str | None) -> Config:
     default = Path(DEFAULT_SPEAK_CONFIG).expanduser()
     if default.exists():
         return load_config(str(default))
+    legacy = Path(LEGACY_SPEAK_CONFIG).expanduser()
+    if legacy.exists():
+        return load_config(str(legacy))
     return load_config(None)
 
 
@@ -99,7 +103,7 @@ def _speak(args: argparse.Namespace) -> int:
         config = _load_speak_config(args.config)
         setup_logging(config)
     except ConfigError as exc:
-        print(f"tts-summarizer config error: {exc}", file=sys.stderr)
+        print(f"echobrief config error: {exc}", file=sys.stderr)
         return 2
 
     host = args.server or config.server.host or "127.0.0.1"
@@ -160,13 +164,13 @@ def _speak(args: argparse.Namespace) -> int:
                 curl.wait()
             except Exception:
                 pass
-        print(f"tts-summarizer request failed: {exc}", file=sys.stderr)
+        print(f"echobrief request failed: {exc}", file=sys.stderr)
         return 0
     return 0
 
 
 def _read_config_resource(resource_name: str) -> str:
-    resource = resources.files("tts_summarizer").joinpath(resource_name)
+    resource = resources.files("echobrief").joinpath(resource_name)
     try:
         return resource.read_text(encoding="utf-8")
     except FileNotFoundError:
@@ -178,7 +182,7 @@ def _init_config(args: argparse.Namespace) -> int:
     config_path = Path.home() / DEFAULT_USER_CONFIG.relative_to("~")
     if config_path.exists() and not args.force:
         print(
-            f"tts-summarizer config exists: {config_path} (use --force overwrite)",
+                f"echobrief config exists: {config_path} (use --force overwrite)",
             file=sys.stderr,
         )
         return 2
@@ -192,7 +196,7 @@ def _init_config(args: argparse.Namespace) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="tts-summarizer")
+    parser = argparse.ArgumentParser(prog="echobrief")
     subcommands = parser.add_subparsers(dest="command", required=True)
 
     config_check = subcommands.add_parser("config-check")
@@ -248,7 +252,7 @@ def main(argv: list[str] | None = None) -> int:
         config = load_config(getattr(args, "config", None))
         setup_logging(config)
     except ConfigError as exc:
-        print(f"tts-summarizer config error: {exc}", file=sys.stderr)
+        print(f"echobrief config error: {exc}", file=sys.stderr)
         return 2 if args.command == "config-check" else 0
 
     if args.command == "config-check":
@@ -259,7 +263,7 @@ def main(argv: list[str] | None = None) -> int:
 
     base_url = daemon_base_url(config, getattr(args, "config", None))
     if base_url is None:
-        print("tts-summarizer daemon unavailable", file=sys.stderr)
+        print("echobrief daemon unavailable", file=sys.stderr)
         return 0
 
     timeout = config.server.request_timeout_ms / 1000
@@ -271,6 +275,6 @@ def main(argv: list[str] | None = None) -> int:
             post_json(f"{base_url}/shutdown", {}, timeout)
             return 0
     except Exception as exc:
-        print(f"tts-summarizer request failed: {exc}", file=sys.stderr)
+        print(f"echobrief request failed: {exc}", file=sys.stderr)
         return 0
     return 0

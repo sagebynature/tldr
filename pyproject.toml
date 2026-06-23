@@ -1,7 +1,11 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
-name = "tts-summarizer"
+name = "echobrief"
 version = "0.0.1"
-description = "Harness-neutral local TTS summarizer daemon using MLX"
+description = "Harness-neutral local speech brief daemon for agent responses"
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [{ name = "sagebynature" }]
@@ -14,11 +18,17 @@ kokoro = ["misaki", "num2words", "spacy", "espeakng-loader", "phonemizer-fork"]
 [dependency-groups]
 dev = ["ty==0.0.23", "ruff>=0.5", "httpx"]
 
+[tool.uv]
+package = true
+
 [project.scripts]
-tts-summarizer = "tts_summarizer.cli:main"
+echobrief = "echobrief.cli:main"
 
 [tool.ty.environment]
 root = ["src"]
+
+[tool.setuptools.package-data]
+echobrief = ["*.toml", "hooks/*", "logging.conf"]
 
 [tool.semantic_release]
 version_toml = ["pyproject.toml:project.version"]

@@ -1,212 +1,263 @@
-# tts-summarizer
+<div align="center"><pre>
+  ███████╗ ██████╗██╗  ██╗ ██████╗ ██████╗ ██████╗ ██╗███████╗███████╗
+  ██╔════╝██╔════╝██║  ██║██╔═══██╗██╔══██╗██╔══██╗██║██╔════╝██╔════╝
+  █████╗  ██║     ███████║██║   ██║██████╔╝██████╔╝██║█████╗  █████╗
+  ██╔══╝  ██║     ██╔══██║██║   ██║██╔══██╗██╔══██╗██║██╔══╝  ██╔══╝
+  ███████╗╚██████╗██║  ██║╚██████╔╝██████╔╝██║  ██║██║███████╗██║
+  ╚══════╝ ╚═════╝╚═╝  ╚═╝ ╚═════╝ ╚═════╝ ╚═╝  ╚═╝╚═╝╚══════╝╚═╝
+                  Short agent replies, spoken cleanly
+</pre></div>
 
-`tts-summarizer` is a small HTTP daemon you bind to any AI application. It turns long AI responses into shorter, speech-friendly text, then returns TTS audio WAV bytes.
+# EchoBrief
 
-## What it is
+EchoBrief is a small local service for making agent responses easier to hear.
 
-- Local HTTP service for AI apps that want spoken responses.
-- Summarizes long assistant output into text that fits spoken playback.
-- Generates TTS audio for client-side playback.
-- Uses configurable summarization and TTS models, local or remote.
-- Works with local MLX models or OpenAI-compatible remote endpoints.
+Not every agent response is speech friendly. Responses are often too long, and
+they frequently include details that are useful on screen but awkward out loud:
+URLs, file links, markdown, code fences, long lists, and other visual-only
+context.
+
+EchoBrief rewrites that text into a short spoken version, sends it to a
+configured TTS backend, and streams the audio back as soon as bytes are
+available.
+
+## How It Works
+
+1. Send agent text to EchoBrief.
+2. The summarizer creates a short version of what should be said.
+3. The rewritten text is sent to TTS.
+4. WAV audio streams back to the client and can start playing immediately.
+
+The daemon exposes an HTTP API and an `echobrief speak` helper. Hook scripts are
+included for common agent harnesses so completions can be spoken automatically.
 
 ## Requirements
 
 - Python 3.11+
 - `uv`
-- Remote OpenAI-compatible summarizer and TTS endpoints, or an Apple Silicon Mac for local MLX profiles.
-- Docker, only for the Docker quick start.
+- `curl` and `ffplay` for the playback examples
+- A summarizer backend with an OpenAI-compatible chat completions API
+- A TTS backend with an OpenAI/MLX-Audio-compatible `/audio/speech` API, or local
+  MLX audio support on Apple Silicon
+- Docker, only if you want to run the server in a container
 
-## Quick start: local CLI install
+## Install
+
+Install the CLI from GitHub:
 
 ```bash
 uv tool install git+https://github.com/sagebynature/tts-summarizer
-tts-summarizer init-config --profile remote
-tts-summarizer serve
 ```
 
-The generated config lives at `~/.config/tts-summarizer/config.toml`. Use `--force` to replace an existing generated config:
+From a local checkout:
 
 ```bash
-tts-summarizer init-config --profile remote --force
+uv tool install .
 ```
 
-The remote profile expects your summarizer and TTS servers to expose OpenAI-compatible APIs before you start the daemon.
-
-## Quick start: Docker
+For local Apple Silicon MLX audio profiles, install the optional extras:
 
 ```bash
-git clone https://github.com/sagebynature/tts-summarizer
-cd tts-summarizer
-docker compose up
+uv tool install 'echobrief[mlx,kokoro] @ git+https://github.com/sagebynature/tts-summarizer'
 ```
 
-Docker runs the HTTP daemon only. By default Compose mounts `config.docker.example.toml`, which binds the daemon to `0.0.0.0:9200` and points model backends at `http://host.docker.internal:9000/v1` so containers can reach model servers running on the Docker host.
+The old `tts-summarizer` command is still installed as a compatibility alias.
 
-Use another Docker config file when your model endpoints live elsewhere:
+## Configure
+
+Generate a user config:
 
 ```bash
-TTS_SUMMARIZER_CONFIG=./config.toml docker compose up
+echobrief init-config --profile remote
 ```
 
-## Config lookup profiles
+The generated config is written to:
+
+```text
+~/.config/echobrief/config.toml
+```
+
+Use `--force` to replace an existing generated config:
+
+```bash
+echobrief init-config --profile remote --force
+```
+
+For Apple Silicon local MLX defaults:
+
+```bash
+echobrief init-config --profile apple-local
+```
 
 Config lookup order:
 
 1. `--config /path/to/config.toml`
 2. `./config.toml`
-3. `~/.config/tts-summarizer/config.toml`
-4. built-in defaults
+3. `~/.config/echobrief/config.toml`
+4. `~/.config/tts-summarizer/config.toml`
+5. Built-in defaults
 
-Generate a remote-backend config:
+The checked-in `config.toml` points both summarization and remote TTS at
+`http://127.0.0.1:9000/v1`. Update the `base_url`, `api_key`, `model`, voice, and
+profile names for your backend.
 
-```bash
-tts-summarizer init-config --profile remote
-```
+## Run The Server
 
-Generate an Apple Silicon local MLX config:
-
-```bash
-tts-summarizer init-config --profile apple-local
-```
-
-Profiles are selected by `default_profile` under each section:
-
-```toml
-[summarizer]
-default_profile = "remote-qwen25"
-
-[tts]
-default_profile = "remote-kokoro"
-```
-
-Switch individual profiles by changing only the relevant `default_profile` value; the daemon can keep remote and local profile definitions in one config.
-
-## Apple local MLX notes
-
-Apple local profiles use `mlx_audio` in process intended Apple Silicon Macs. Install optional local audio dependencies and the default Kokoro TTS profile dependencies using local MLX TTS:
+Start the HTTP daemon:
 
 ```bash
-uv tool install 'tts-summarizer[mlx,kokoro] @ git+https://github.com/sagebynature/tts-summarizer'
+echobrief serve --config config.toml
 ```
 
-The Apple local example keeps remote profiles too, so you can switch individual profiles without changing the daemon.
-
-## Run daemon
+From a development checkout:
 
 ```bash
-tts-summarizer serve --config config.toml
+uv run python -m echobrief serve --config config.toml
 ```
 
-FastAPI OpenAPI docs are available while the daemon is running:
+The default server listens on:
+
+```text
+http://127.0.0.1:9200
+```
+
+OpenAPI docs are available while the server is running:
 
 - `http://127.0.0.1:9200/docs`
 - `http://127.0.0.1:9200/redoc`
 - `http://127.0.0.1:9200/openapi.json`
 
-## Send request
-
-`/v1/speak` returns WAV bytes. Playback example:
+Check or stop the daemon:
 
 ```bash
-curl -sS -X POST http://127.0.0.1:9200/v1/speak \
+echobrief health --config config.toml
+echobrief stop --config config.toml
+```
+
+## Speak With curl
+
+`POST /v1/speak` returns WAV bytes. This example streams the response directly
+into `ffplay`:
+
+```bash
+curl -sS \
   -H 'Content-Type: application/json' \
-  -d '{"text":"This is a long answer to summarize before speaking."}' \
+  -d '{"text":"The implementation is complete. I updated the README, verified the CLI options, and left the server configuration unchanged.","summarize":true}' \
+  http://127.0.0.1:9200/v1/speak \
+  | ffplay -nodisp -autoexit -loglevel error -i pipe:0
+```
+
+Save the audio instead:
+
+```bash
+curl -sS \
+  -H 'Content-Type: application/json' \
+  -d '{"text":"Speak this after summarizing it.","summarize":true}' \
+  http://127.0.0.1:9200/v1/speak \
   --output reply.wav
-ffplay -nodisp -autoexit reply.wav
 ```
 
-CLI request helper:
+Set `"summarize":false` to send text directly to TTS.
+
+## Speak With The CLI
+
+The CLI helper posts to the server and pipes the streamed WAV response to
+`ffplay`:
 
 ```bash
-tts-summarizer speak --session_id demo "Codex finished."
+echobrief speak --session_id demo "Codex finished the task and the tests passed."
 ```
 
-Use `--summarize false` to send text directly to TTS. `--session_id` interrupts any previous playback for that session.
-
-## Check and stop
+Use a specific server:
 
 ```bash
-tts-summarizer health --config config.toml
-tts-summarizer stop --config config.toml
+echobrief speak --server 127.0.0.1 --port 9200 "Read this response out loud."
 ```
 
-## Development commands
+Skip summarization:
 
 ```bash
-uv sync --dev
-make build # uv build
-make test # uv run python -m unittest discover -s tests -v
-make typecheck # uvx ty check src tests
-make check # typecheck, test, build
-make run # uv run python -m tts_summarizer serve --config config.toml
+echobrief speak --summarize false "Speak this exact text."
 ```
 
-Use another config during development:
+`--session_id` interrupts any previous playback for the same session before
+starting the new one.
+
+## Install A Harness Hook
+
+Install a hook for your agent harness:
+
+```bash
+echobrief install --harness codex
+```
+
+Supported harnesses:
+
+- `codex`
+- `claude`
+- `omp`
+- `pi`
+- `hermes`
+
+Examples:
+
+```bash
+echobrief install --harness claude
+echobrief install --harness hermes
+```
+
+The installer copies the matching hook into the harness config directory and
+updates the harness settings where needed. Hooks call the local daemon, so start
+`echobrief serve` before expecting spoken completions.
+
+## Run With Docker
+
+Build and run the daemon with Compose:
+
+```bash
+docker compose up --build
+```
+
+Compose publishes the service on host port `9200` and mounts:
+
+```text
+./config.docker.toml:/config/config.toml:ro
+```
+
+The Docker config binds the daemon to `0.0.0.0:9200` and points model backends at:
+
+```text
+http://host.docker.internal:9000/v1
+```
+
+Use a different config file:
+
+```bash
+ECHOBRIEF_CONFIG=./config.toml docker compose up --build
+```
+
+The container runs the server only. Your summarizer and TTS model servers must be
+reachable from inside the container.
+
+## Development
+
+```bash
+make run        # uv run python -m echobrief serve --config config.toml
+make test       # typecheck, then unittest
+make typecheck  # uv run ty check src tests
+make check      # lint, format, typecheck, test
+```
+
+Use another config while developing:
 
 ```bash
 make run CONFIG=/path/to/config.toml
 ```
 
-## Configure summarization models
-
-Summarizer profiles use OpenAI-compatible chat completion endpoints. Point them at a local server, an oMLX deployment, or another compatible remote endpoint.
-
-```toml
-[summarizer]
-default_profile = "qwen25"
-
-[summarizer.profiles.qwen25]
-base_url = "http://127.0.0.1:9000/v1"
-api_key = "omlx"
-model = "mlx-community/Qwen2.5-1.5B-Instruct-4bit"
-max_words = 40
-```
-
-## Configure TTS models
-
-TTS profiles can run local `mlx_audio` models in process or call a remote OpenAI/MLX-Audio-compatible endpoint.
-
-Local example:
-
-```toml
-[tts]
-default_profile = "kokoro"
-
-[tts.profiles.kokoro]
-backend = "mlx"
-model = "mlx-community/Kokoro-82M-bf16"
-
-[tts.profiles.kokoro.generate_kwargs]
-voice = "af_heart"
-lang_code = "a"
-```
-
-Remote example:
-
-```toml
-[tts]
-default_profile = "remote-kokoro"
-
-[tts.profiles.remote-kokoro]
-backend = "remote"
-base_url = "http://127.0.0.1:9100/v1"
-api_key = "omlx"
-model = "mlx-community/Kokoro-82M-bf16"
-stream = true
-sample_rate = 24000
-
-[tts.profiles.remote-kokoro.generate_kwargs]
-voice = "af_heart"
-lang_code = "a"
-response_format = "wav"
-```
-
-Remote TTS posts to `{base_url}/audio/speech` and streams returned WAV bytes unchanged.
-
 ## Logging
 
-The package ships `src/tts_summarizer/logging.conf`, using `colorlog.ColoredFormatter` like `korean-name-generator`. Use a custom logging config from TOML:
+The default logging config lives at `src/echobrief/logging.conf`. Use a
+custom logging config from TOML:
 
 ```toml
 [logging]

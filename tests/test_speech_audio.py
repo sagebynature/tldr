@@ -3,10 +3,10 @@ from importlib import import_module
 import unittest
 import json
 from typing import cast
-import tts_summarizer.speech
-from tts_summarizer.audio import chunks_to_wav_stream
-from tts_summarizer.config import TtsConfig, TtsProfileConfig
-from tts_summarizer.speech import (
+import echobrief.speech
+from echobrief.audio import chunks_to_wav_stream
+from echobrief.config import TtsConfig, TtsProfileConfig
+from echobrief.speech import (
     AudioBytes,
     AudioChunk,
     RemoteTtsBackend,
@@ -189,7 +189,7 @@ class SpeechAudioTests(unittest.TestCase):
                 },
             )
         )
-        generator.backend = tts_summarizer.speech.RoutingSpeechBackend(
+        generator.backend = echobrief.speech.RoutingSpeechBackend(
             local=LocalBackend(), remote=RemoteBackend()
         )
 
@@ -233,7 +233,7 @@ class SpeechAudioTests(unittest.TestCase):
             stream=False,
             generate_kwargs={"cfg_scale": 2.5, "steps": 30},
         )
-        backend = tts_summarizer.speech.MlxAudioBackend()
+        backend = echobrief.speech.MlxAudioBackend()
         backend._models[config.model] = Model()
 
         chunks = list(backend.generate("hello", config))
@@ -254,7 +254,7 @@ class SpeechAudioTests(unittest.TestCase):
         config = TtsProfileConfig(
             model="fake", stream=False, generate_kwargs={"stream": True}
         )
-        backend = tts_summarizer.speech.MlxAudioBackend()
+        backend = echobrief.speech.MlxAudioBackend()
         backend._models[config.model] = Model()
 
         self.assertEqual(list(backend.generate("hello", config)), [])
@@ -267,7 +267,7 @@ class SpeechAudioTests(unittest.TestCase):
             def generate(self, **kwargs):
                 return []
 
-        backend = tts_summarizer.speech.MlxAudioBackend()
+        backend = echobrief.speech.MlxAudioBackend()
 
         def load(model_name):
             loaded.append(model_name)
@@ -288,7 +288,7 @@ class SpeechAudioTests(unittest.TestCase):
         except ImportError:
             self.skipTest("mlx-audio Kokoro not installed")
 
-        tts_summarizer.speech._patch_kokoro_sinegen()
+        echobrief.speech._patch_kokoro_sinegen()
         sine = SineGen(samp_rate=24000, upsample_scale=300, harmonic_num=8)
         setattr(sine, "_f02sine", lambda _fn: mx.ones((1, 4, 9)))
 

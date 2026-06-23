@@ -39,7 +39,7 @@ def get_json(url: str, timeout: float) -> dict[str, object]:
 
 
 def start_daemon(config: Config, config_path: str | None) -> None:
-    args = [sys.executable, "-m", "tts_summarizer", "serve"]
+    args = [sys.executable, "-m", "echobrief", "serve"]
     if config_path:
         args.extend(["--config", config_path])
     log_path = Path(config.server.state_dir).expanduser() / "daemon.log"

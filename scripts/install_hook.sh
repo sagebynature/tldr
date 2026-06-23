@@ -2,4 +2,4 @@
 set -euo pipefail
 
 harness="${1:-codex}"
-exec tts-summarizer install --harness "$harness"
+exec echobrief install --harness "$harness"

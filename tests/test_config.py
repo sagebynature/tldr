@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tts_summarizer.config import ConfigError, load_config
+from echobrief.config import ConfigError, load_config
 
 
 class ConfigTests(unittest.TestCase):
@@ -159,8 +159,8 @@ class ConfigTests(unittest.TestCase):
             cwd = root / "cwd"
             home = root / "home"
             cwd.mkdir()
-            (home / ".config" / "tts-summarizer").mkdir(parents=True)
-            (home / ".config" / "tts-summarizer" / "config.toml").write_text(
+            (home / ".config" / "echobrief").mkdir(parents=True)
+            (home / ".config" / "echobrief" / "config.toml").write_text(
                 '[tts.profiles.qwen.generate_kwargs]\nvoice = "UserVoice"\n',
                 encoding="utf-8",
             )

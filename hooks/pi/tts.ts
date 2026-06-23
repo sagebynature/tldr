@@ -48,7 +48,7 @@ export default function ttsSummarizerHook(pi) {
       return;
     }
 
-    const ttsBin = process.env.TTS_BIN || "tts-summarizer";
+    const ttsBin = process.env.TTS_BIN || "echobrief";
     const sessionId = process.env.TTS_SESSION_ID || `pi:${ctx?.cwd || process.cwd()}`;
     const args = ["speak", "--session_id", sessionId, text];
 
@@ -60,7 +60,7 @@ export default function ttsSummarizerHook(pi) {
       child.on("error", () => { });
       child.unref();
     } catch {
-      // ponytail: missing local tts-summarizer must not break an OMP turn.
+    // Missing local EchoBrief must not break a Pi turn.
     }
   });
 }

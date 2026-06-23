@@ -1,5 +1,5 @@
 import unittest
-from tts_summarizer.cli import main
+from echobrief.cli import main
 
 
 class CliTests(unittest.TestCase):
