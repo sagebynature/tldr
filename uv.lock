@@ -647,6 +647,15 @@ wheels = [
 ]
 
 [[package]]
+name = "mdclense"
+version = "0.1.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/b2/7e/0f7547766716534a8ed484f0509f1f296d7b820e352642e3412ead030acc/mdclense-0.1.2.tar.gz", hash = "sha256:e8464f17bde450cff66aba64d5391f146432e293434619e7798fb7166e33a515", size = 7186, upload-time = "2024-12-13T13:52:23.522Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/91/71/dd6769438749c63b7b2cd09e4374e0be6e9a0752a4850d7d8b51ef9c879b/mdclense-0.1.2-py3-none-any.whl", hash = "sha256:41c9c45a099478424b866b3c1a23c51397a4d135f0dce019c9128bbb4f4fb987", size = 5116, upload-time = "2024-12-13T13:52:20.961Z" },
+]
+
+[[package]]
 name = "mdurl"
 version = "0.1.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1892,6 +1901,7 @@ source = { editable = "." }
 dependencies = [
     { name = "colorlog" },
     { name = "fastapi" },
+    { name = "mdclense" },
     { name = "uvicorn" },
 ]
 
@@ -1919,6 +1929,7 @@ requires-dist = [
     { name = "colorlog", specifier = ">=6.10.1" },
     { name = "espeakng-loader", marker = "extra == 'kokoro'" },
     { name = "fastapi" },
+    { name = "mdclense", specifier = ">=0.1.2" },
     { name = "misaki", marker = "extra == 'kokoro'" },
     { name = "mlx-audio", marker = "platform_machine == 'arm64' and sys_platform == 'darwin' and extra == 'mlx'" },
     { name = "num2words", marker = "extra == 'kokoro'" },
