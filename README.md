@@ -1,7 +1,9 @@
 <div align="center">
-# TLDR
+
+# TL;DR
 
 **Short agent replies, spoken cleanly**
+
 </div>
 
 ---
