@@ -53,17 +53,17 @@ From a local checkout:
 uv tool install .
 ```
 
-For local Apple Silicon MLX audio profiles, install the optional extras:
+For local Apple Silicon MLX audio profiles, install optional extras:
 
 ```bash
 uv tool install 'tldr[mlx,kokoro] @ git+https://github.com/sagebynature/tts-summarizer'
 ```
 
-The old `tts-summarizer` command is still installed as a compatibility alias.
+Only the `tldr` command is installed.
 
 ## Configure
 
-Generate a user config:
+Generate user config:
 
 ```bash
 tldr init-config --profile remote
@@ -95,11 +95,21 @@ Config lookup order:
 4. `~/.config/tts-summarizer/config.toml`
 5. Built-in defaults
 
-The checked-in `config.toml` points both summarization and remote TTS at
-`http://127.0.0.1:9000/v1`. Update the `base_url`, `api_key`, `model`, voice, and
-profile names for your backend.
+The checked-in `config.toml` uses `http://127.0.0.1:9000/v1` for the
+OpenAI-compatible summarizer backend and remote TTS profile examples. Update
+`base_url`, `api_key`, `model`, voice, and profile names for your backend.
 
-## Run The Server
+Useful commands:
+
+- `tldr config-check --config config.toml`
+- `tldr init-config --profile remote|apple-local [--force]`
+- `tldr serve --config config.toml`
+- `tldr health --config config.toml`
+- `tldr stop --config config.toml`
+- `tldr install --harness codex|claude|omp|pi|hermes`
+- `tldr speak [--config config.toml] [--server 127.0.0.1] [--port 9200] [--session_id ID] [--summarize true|false] TEXT...`
+
+## Run Server
 
 Start the HTTP daemon:
 
@@ -132,20 +142,24 @@ tldr health --config config.toml
 tldr stop --config config.toml
 ```
 
+`health` and `stop` locate the daemon through state under `state_dir`. With
+`auto_start = true`, commands can start the daemon if no live state is found.
+Auto-started daemon stdout and stderr go to `<state_dir>/daemon.log`.
+
 ## Speak With curl
 
-`POST /v1/speak` returns WAV bytes. This example streams the response directly
-into `ffplay`:
+`POST /v1/speak` returns streamed `audio/wav`. This example streams the
+response directly into `ffplay`:
 
 ```bash
 curl -sS \
   -H 'Content-Type: application/json' \
-  -d '{"text":"The implementation is complete. I updated the README, verified the CLI options, and left the server configuration unchanged.","summarize":true}' \
+  -d '{"text":"The implementation is complete. I updated the README, verified CLI options, and left server configuration unchanged.","summarize":true}' \
   http://127.0.0.1:9200/v1/speak \
   | ffplay -nodisp -autoexit -loglevel error -i pipe:0
 ```
 
-Save the audio instead:
+Save audio instead:
 
 ```bash
 curl -sS \
@@ -155,11 +169,33 @@ curl -sS \
   --output reply.wav
 ```
 
-Set `"summarize":false` to send text directly to TTS.
+Request fields:
+
+- `text` required, non-empty string
+- `metadata` optional object
+- `summarize` optional boolean, default `true`
+- `tts_profile` optional named TTS profile
+- `summarizer_profile` optional named summarizer profile
+
+Headers set caller and session identity:
+
+- `X-TTS-Caller`
+- `X-TTS-Session-Id`
+
+Set `"summarize": false` to send text directly to TTS.
+
+`POST /v1/summarize` returns summary-only JSON without generating audio:
+
+```json
+{"summary":"Short spoken version.","changed":true}
+```
+
+It accepts `text`, optional `summarizer_profile`, and summary override fields
+`word_threshold`, `max_words`, `temperature`, and `max_tokens`.
 
 ## Speak With The CLI
 
-The CLI helper posts to the server and pipes the streamed WAV response to
+The CLI helper posts to the server with `curl` and pipes streamed WAV audio to
 `ffplay`:
 
 ```bash
@@ -204,8 +240,10 @@ tldr install --harness claude
 tldr install --harness hermes
 ```
 
-The installer copies the matching hook into the harness config directory and
-updates the harness settings where needed. Hooks call the local daemon, so start
+The installer copies the matching hook into the harness config area and updates
+harness settings where needed. Hermes installs
+`~/.hermes/agent-hooks/tldr/hermes_tts.py`, touches `~/.hermes/tts.enabled`,
+and updates `~/.hermes/config.yaml`. Hooks call the local daemon, so start
 `tldr serve` before expecting spoken completions.
 
 ## Run With Docker
@@ -216,16 +254,13 @@ Build and run the daemon with Compose:
 docker compose up --build
 ```
 
-Compose publishes the service on host port `9200` and mounts:
+Compose publishes the service on host port `9200`, mounts config, and exposes
+host model servers to the container:
 
 ```text
-./config.docker.toml:/config/config.toml:ro
-```
-
-The Docker config binds the daemon to `0.0.0.0:9200` and points model backends at:
-
-```text
-http://host.docker.internal:9000/v1
+${TLDR_CONFIG:-./config.docker.toml}:/config/config.toml:ro
+9200:9200
+host.docker.internal:9000/v1
 ```
 
 Use a different config file:
@@ -234,16 +269,18 @@ Use a different config file:
 TLDR_CONFIG=./config.toml docker compose up --build
 ```
 
-The container runs the server only. Your summarizer and TTS model servers must be
-reachable from inside the container.
+The container runs the TL;DR server only. Summarizer and TTS model servers must
+be reachable from inside the container.
 
 ## Development
 
 ```bash
-make run        # uv run python -m tldr serve --config config.toml
-make test       # typecheck, then unittest
-make typecheck  # uv run ty check src tests
-make check      # lint, format, typecheck, test
+make run       # uv run python -m tldr serve --config config.toml
+make test      # typecheck, then unittest
+make typecheck # uv run ty check src tests
+make lint      # ruff check src tests --fix
+make format    # ruff format src tests
+make check     # lint, format, typecheck, test
 ```
 
 Use another config while developing:
@@ -252,12 +289,17 @@ Use another config while developing:
 make run CONFIG=/path/to/config.toml
 ```
 
+`make lint` and `make format` write fixes.
+
 ## Logging
 
-The default logging config lives at `src/tldr/logging.conf`. Use a
-custom logging config from TOML:
+The default logging config lives at `src/tldr/logging.conf`. Use a custom
+logging config from TOML:
 
 ```toml
 [logging]
 config_file = "/path/to/logging.conf"
 ```
+
+Custom logging paths expand `~`. Auto-started daemon stdout and stderr are
+written to `<state_dir>/daemon.log`.
