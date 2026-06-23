@@ -33,7 +33,7 @@ def setup_logging(config: Config) -> None:
         _log_config(config)
         return
 
-    with resources.as_file(resources.files("echobrief") / "logging.conf") as path:
+    with resources.as_file(resources.files("tldr") / "logging.conf") as path:
         fileConfig(path, disable_existing_loggers=False)
 
     _log_config(config)

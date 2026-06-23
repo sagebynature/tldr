@@ -8,7 +8,7 @@ import time
 import unittest
 from pathlib import Path
 
-from echobrief import cli
+from tldr import cli
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -31,7 +31,7 @@ def stub_tts(directory: Path, delay: float = 0) -> Path:
     bin_dir.mkdir(exist_ok=True)
     capture = directory / "tts-call.json"
     started = directory / "tts-started"
-    stub = bin_dir / "echobrief"
+    stub = bin_dir / "tldr"
     stub.write_text(
         "#!/usr/bin/env python3\n"
         "import json, pathlib, sys, time\n"
@@ -187,7 +187,7 @@ class CodexHookTests(unittest.TestCase):
                     timeout=0.5,
                 )
             except subprocess.TimeoutExpired:
-                self.fail("Codex hook waited for EchoBrief instead of spawning it")
+                self.fail("Codex hook waited for TL;DR instead of spawning it")
 
             self.assertFalse(capture.exists())
             call = read_json_when_ready(capture)
@@ -317,9 +317,7 @@ class ClaudeHookTests(unittest.TestCase):
                     timeout=0.5,
                 )
             except subprocess.TimeoutExpired:
-                self.fail(
-                    "Claude hook waited for EchoBrief instead of spawning it"
-                )
+                self.fail("Claude hook waited for TL;DR instead of spawning it")
 
             self.assertFalse(capture.exists())
             call = read_json_when_ready(capture)
@@ -525,7 +523,7 @@ class HookInstallerTests(unittest.TestCase):
             self.assertEqual(matching[0]["matcher"], "*")
             self.assertTrue((codex_dir / "tts.enabled").exists())
 
-    def test_installed_codex_command_runs_when_echobrief_is_installed(self):
+    def test_installed_codex_command_runs_when_tldr_is_installed(self):
         with tempfile.TemporaryDirectory() as tmp_name:
             home = Path(tmp_name)
             capture = stub_tts(home)
@@ -610,7 +608,7 @@ class HookInstallerTests(unittest.TestCase):
             self.assertNotIn("matcher", matching[0])
             self.assertTrue((claude_dir / "tts.enabled").exists())
 
-    def test_installed_claude_command_runs_when_echobrief_is_installed(self):
+    def test_installed_claude_command_runs_when_tldr_is_installed(self):
         with tempfile.TemporaryDirectory() as tmp_name:
             home = Path(tmp_name)
             capture = stub_tts(home)
@@ -673,9 +671,7 @@ class HookInstallerTests(unittest.TestCase):
             finally:
                 restore_home_and_path(old_home, old_path)
 
-            installed = (
-                home / ".hermes" / "agent-hooks" / "echobrief" / "hermes_tts.py"
-            )
+            installed = home / ".hermes" / "agent-hooks" / "tldr" / "hermes_tts.py"
             config = config_yaml.read_text(encoding="utf-8")
             command = str(installed)
 
@@ -708,7 +704,7 @@ class HookInstallerTests(unittest.TestCase):
             finally:
                 restore_home_and_path(old_home, old_path)
 
-            installed = home / ".hermes" / "agent-hooks" / "echobrief" / "hermes_tts.py"
+            installed = home / ".hermes" / "agent-hooks" / "tldr" / "hermes_tts.py"
             config = config_yaml.read_text(encoding="utf-8")
             command = str(installed)
 
@@ -788,7 +784,7 @@ class OmpHookTests(unittest.TestCase):
             env = os.environ.copy()
             env.update(
                 {
-                    "OMP_TTS_BIN": str(tmp / "bin" / "echobrief"),
+                    "OMP_TTS_BIN": str(tmp / "bin" / "tldr"),
                     "OMP_TTS_SESSION_ID": "omp-session-123",
                 }
             )
@@ -834,7 +830,7 @@ class OmpHookTests(unittest.TestCase):
                 ],
             )
             env = os.environ.copy()
-            env["OMP_TTS_BIN"] = str(tmp / "bin" / "echobrief")
+            env["OMP_TTS_BIN"] = str(tmp / "bin" / "tldr")
 
             subprocess.run(
                 ["node", str(runner)], check=True, cwd=tmp, env=env, timeout=1
@@ -862,7 +858,7 @@ class OmpHookTests(unittest.TestCase):
                 [],
             )
             env = os.environ.copy()
-            env["OMP_TTS_BIN"] = str(tmp / "bin" / "echobrief")
+            env["OMP_TTS_BIN"] = str(tmp / "bin" / "tldr")
 
             subprocess.run(
                 ["node", str(runner)], check=True, cwd=tmp, env=env, timeout=0.5
@@ -884,7 +880,7 @@ class OmpHookTests(unittest.TestCase):
             finally:
                 restore_home_and_path(old_home, old_path)
 
-            installed = home / ".omp" / "agent" / "extensions" / "echobrief.ts"
+            installed = home / ".omp" / "agent" / "extensions" / "tldr.ts"
             self.assertTrue(installed.exists())
             self.assertIn("agent_end", installed.read_text(encoding="utf-8"))
 
@@ -897,7 +893,7 @@ class OmpHookTests(unittest.TestCase):
             finally:
                 restore_home_and_path(old_home, old_path)
 
-            installed = home / ".pi" / "agent" / "extensions" / "echobrief.ts"
+            installed = home / ".pi" / "agent" / "extensions" / "tldr.ts"
             self.assertTrue(installed.exists())
             self.assertIn("agent_end", installed.read_text(encoding="utf-8"))
 

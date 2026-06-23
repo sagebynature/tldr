@@ -12,12 +12,23 @@ from typing import Any
 TEXT_PATHS = (
     ("last_assistant_message",),
     ("payload", "last_assistant_message"),
+    ("last_agent_message",),
+    ("payload", "last_agent_message"),
     ("message",),
     ("payload", "message"),
     ("text",),
     ("payload", "text"),
+    ("final_response",),
+    ("payload", "final_response"),
+    ("assistant_response",),
+    ("payload", "assistant_response"),
 )
-SESSION_PATHS = (("session_id",), ("payload", "session_id"))
+SESSION_PATHS = (
+    ("session_id",),
+    ("payload", "session_id"),
+    ("conversation_id",),
+    ("payload", "conversation_id"),
+)
 TRANSCRIPT_PATHS = (("transcript_path",), ("payload", "transcript_path"))
 
 
@@ -38,24 +49,28 @@ def first_string(payload: dict[str, Any], paths: tuple[tuple[str, ...], ...]) ->
     return ""
 
 
-def assistant_text_from_transcript_item(item: Any) -> str:
+def assistant_text_from_response_item(item: Any) -> tuple[str, bool]:
     if not isinstance(item, dict):
-        return ""
-    message = item.get("message")
-    if not isinstance(message, dict) or message.get("role") != "assistant":
-        return ""
-    content = message.get("content")
-    if isinstance(content, str):
-        return content.strip()
-    if not isinstance(content, list):
-        return ""
-    return "".join(
-        part.get("text", "")
-        for part in content
-        if isinstance(part, dict)
-        and part.get("type") == "text"
-        and isinstance(part.get("text"), str)
-    ).strip()
+        return "", False
+    item_payload = item.get("payload")
+    if not isinstance(item_payload, dict):
+        return "", False
+    if item_payload.get("type") != "message" or item_payload.get("role") != "assistant":
+        return "", False
+    content = item_payload.get("content")
+    if isinstance(content, list):
+        text = "".join(
+            part.get("text", "")
+            for part in content
+            if isinstance(part, dict)
+            and part.get("type") in {"output_text", "text"}
+            and isinstance(part.get("text"), str)
+        ).strip()
+    elif isinstance(content, str):
+        text = content.strip()
+    else:
+        text = ""
+    return text, item_payload.get("phase") == "final_answer"
 
 
 def transcript_text(path: str) -> str:
@@ -64,7 +79,8 @@ def transcript_text(path: str) -> str:
     candidate = Path(path).expanduser()
     if not candidate.is_file():
         return ""
-    last_text = ""
+    last_assistant = ""
+    last_final = ""
     try:
         with candidate.open(encoding="utf-8") as handle:
             for line in handle:
@@ -72,12 +88,19 @@ def transcript_text(path: str) -> str:
                     item = json.loads(line)
                 except json.JSONDecodeError:
                     continue
-                text = assistant_text_from_transcript_item(item)
+                item_payload = item.get("payload") if isinstance(item, dict) else None
+                if isinstance(item_payload, dict):
+                    message = item_payload.get("last_agent_message")
+                    if isinstance(message, str) and message.strip():
+                        last_final = message.strip()
+                text, is_final = assistant_text_from_response_item(item)
                 if text:
-                    last_text = text
+                    last_assistant = text
+                    if is_final:
+                        last_final = text
     except OSError:
         return ""
-    return last_text
+    return last_final or last_assistant
 
 
 def load_payload(raw: str) -> dict[str, Any]:
@@ -95,10 +118,14 @@ def append_log(path: Path, message: str) -> None:
 
 
 def main() -> int:
-    log_file = Path(os.environ.get("CLAUDE_TTS_LOG", "/tmp/claude-tts.log"))
-    payload_log = Path(os.environ.get("CLAUDE_TTS_PAYLOAD_LOG", "/tmp/claude-tts-payload.json"))
-    state_file = Path(os.environ.get("CLAUDE_TTS_STATE_FILE", str(Path.home() / ".claude/tts.enabled")))
-    tts_bin = os.environ.get("CLAUDE_TTS_BIN", "echobrief")
+    log_file = Path(os.environ.get("CODEX_TTS_LOG", "/tmp/codex-tts.log"))
+    payload_log = Path(
+        os.environ.get("CODEX_TTS_PAYLOAD_LOG", "/tmp/codex-tts-payload.json")
+    )
+    state_file = Path(
+        os.environ.get("CODEX_TTS_STATE_FILE", str(Path.home() / ".codex/tts.enabled"))
+    )
+    tts_bin = os.environ.get("CODEX_TTS_BIN", "tldr")
 
     if not state_file.is_file():
         return 0
@@ -109,14 +136,16 @@ def main() -> int:
         payload_log.write_text(raw + "\n", encoding="utf-8")
     payload = load_payload(raw)
 
-    session_id = os.environ.get("CLAUDE_TTS_SESSION_ID", "") or first_string(payload, SESSION_PATHS)
-    text = os.environ.get("CLAUDE_TTS_TEXT", "") or first_string(payload, TEXT_PATHS)
+    session_id = os.environ.get("CODEX_TTS_SESSION_ID", "") or first_string(
+        payload, SESSION_PATHS
+    )
+    text = os.environ.get("CODEX_TTS_TEXT", "") or first_string(payload, TEXT_PATHS)
     if not text:
         text = transcript_text(first_string(payload, TRANSCRIPT_PATHS))
-    text = text or "Claude finished."
+    text = text or "Codex finished."
 
     if shutil.which(tts_bin) is None:
-        append_log(log_file, f"claude_tts: {tts_bin} not found")
+        append_log(log_file, f"codex_tts: {tts_bin} not found")
         return 0
 
     args = [tts_bin, "speak"]

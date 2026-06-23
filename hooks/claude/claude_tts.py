@@ -98,7 +98,7 @@ def main() -> int:
     log_file = Path(os.environ.get("CLAUDE_TTS_LOG", "/tmp/claude-tts.log"))
     payload_log = Path(os.environ.get("CLAUDE_TTS_PAYLOAD_LOG", "/tmp/claude-tts-payload.json"))
     state_file = Path(os.environ.get("CLAUDE_TTS_STATE_FILE", str(Path.home() / ".claude/tts.enabled")))
-    tts_bin = os.environ.get("CLAUDE_TTS_BIN", "echobrief")
+    tts_bin = os.environ.get("CLAUDE_TTS_BIN", "tldr")
 
     if not state_file.is_file():
         return 0

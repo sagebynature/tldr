@@ -1,5 +1,5 @@
 import unittest
-from echobrief.cli import main
+from tldr.cli import main
 
 
 class CliTests(unittest.TestCase):

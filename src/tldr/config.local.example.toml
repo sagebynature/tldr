@@ -2,7 +2,7 @@
 
 host = "127.0.0.1"
 port = 9200
-state_dir = "~/.cache/echobrief"
+state_dir = "~/.cache/tldr"
 auto_start = true
 startup_timeout_ms = 3000
 request_timeout_ms = 5000
@@ -54,21 +54,6 @@ stream = true
 sample_rate = 24000
 
 [tts.profiles.kokoro.generate_kwargs]
-
-voice = "af_heart"
-lang_code = "a"
-response_format = "wav"
-
-[tts.profiles.remote-kokoro]
-
-backend = "remote"
-base_url = "http://127.0.0.1:9000/v1"
-api_key = "omlx"
-model = "mlx-community/Kokoro-82M-bf16"
-stream = true
-sample_rate = 24000
-
-[tts.profiles.remote-kokoro.generate_kwargs]
 
 voice = "af_heart"
 lang_code = "a"

@@ -126,7 +126,7 @@ def _summary_request(payload: dict[str, object], config: Config):
 def create_app(config: Config, summarizer=None, speech=None) -> FastAPI:
     summarizer = summarizer or Summarizer(config.summarizer)
     speech = speech or SpeechGenerator(config.tts)
-    app = FastAPI(title="EchoBrief")
+    app = FastAPI(title="TL;DR")
     app.state.summarizer = summarizer
     app.state.speech = speech
 

@@ -3,8 +3,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from echobrief.config import load_config
-from echobrief.logging_setup import setup_logging
+from tldr.config import load_config
+from tldr.logging_setup import setup_logging
 
 
 class LoggingSetupTests(unittest.TestCase):

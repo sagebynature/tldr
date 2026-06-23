@@ -8,27 +8,25 @@
                   Short agent replies, spoken cleanly
 </pre></div>
 
-# EchoBrief
-
-EchoBrief is a small local service for making agent responses easier to hear.
+# TL;DR
 
 Not every agent response is speech friendly. Responses are often too long, and
 they frequently include details that are useful on screen but awkward out loud:
 URLs, file links, markdown, code fences, long lists, and other visual-only
 context.
 
-EchoBrief rewrites that text into a short spoken version, sends it to a
+TL;DR rewrites that text into a short spoken version, sends it to a
 configured TTS backend, and streams the audio back as soon as bytes are
 available.
 
 ## How It Works
 
-1. Send agent text to EchoBrief.
+1. Send agent text to TL;DR.
 2. The summarizer creates a short version of what should be said.
 3. The rewritten text is sent to TTS.
 4. WAV audio streams back to the client and can start playing immediately.
 
-The daemon exposes an HTTP API and an `echobrief speak` helper. Hook scripts are
+The daemon exposes an HTTP API and an `tldr speak` helper. Hook scripts are
 included for common agent harnesses so completions can be spoken automatically.
 
 ## Requirements
@@ -58,7 +56,7 @@ uv tool install .
 For local Apple Silicon MLX audio profiles, install the optional extras:
 
 ```bash
-uv tool install 'echobrief[mlx,kokoro] @ git+https://github.com/sagebynature/tts-summarizer'
+uv tool install 'tldr[mlx,kokoro] @ git+https://github.com/sagebynature/tts-summarizer'
 ```
 
 The old `tts-summarizer` command is still installed as a compatibility alias.
@@ -68,32 +66,32 @@ The old `tts-summarizer` command is still installed as a compatibility alias.
 Generate a user config:
 
 ```bash
-echobrief init-config --profile remote
+tldr init-config --profile remote
 ```
 
 The generated config is written to:
 
 ```text
-~/.config/echobrief/config.toml
+~/.config/tldr/config.toml
 ```
 
 Use `--force` to replace an existing generated config:
 
 ```bash
-echobrief init-config --profile remote --force
+tldr init-config --profile remote --force
 ```
 
 For Apple Silicon local MLX defaults:
 
 ```bash
-echobrief init-config --profile apple-local
+tldr init-config --profile apple-local
 ```
 
 Config lookup order:
 
 1. `--config /path/to/config.toml`
 2. `./config.toml`
-3. `~/.config/echobrief/config.toml`
+3. `~/.config/tldr/config.toml`
 4. `~/.config/tts-summarizer/config.toml`
 5. Built-in defaults
 
@@ -106,13 +104,13 @@ profile names for your backend.
 Start the HTTP daemon:
 
 ```bash
-echobrief serve --config config.toml
+tldr serve --config config.toml
 ```
 
 From a development checkout:
 
 ```bash
-uv run python -m echobrief serve --config config.toml
+uv run python -m tldr serve --config config.toml
 ```
 
 The default server listens on:
@@ -130,8 +128,8 @@ OpenAPI docs are available while the server is running:
 Check or stop the daemon:
 
 ```bash
-echobrief health --config config.toml
-echobrief stop --config config.toml
+tldr health --config config.toml
+tldr stop --config config.toml
 ```
 
 ## Speak With curl
@@ -165,19 +163,19 @@ The CLI helper posts to the server and pipes the streamed WAV response to
 `ffplay`:
 
 ```bash
-echobrief speak --session_id demo "Codex finished the task and the tests passed."
+tldr speak --session_id demo "Codex finished the task and the tests passed."
 ```
 
 Use a specific server:
 
 ```bash
-echobrief speak --server 127.0.0.1 --port 9200 "Read this response out loud."
+tldr speak --server 127.0.0.1 --port 9200 "Read this response out loud."
 ```
 
 Skip summarization:
 
 ```bash
-echobrief speak --summarize false "Speak this exact text."
+tldr speak --summarize false "Speak this exact text."
 ```
 
 `--session_id` interrupts any previous playback for the same session before
@@ -188,7 +186,7 @@ starting the new one.
 Install a hook for your agent harness:
 
 ```bash
-echobrief install --harness codex
+tldr install --harness codex
 ```
 
 Supported harnesses:
@@ -202,13 +200,13 @@ Supported harnesses:
 Examples:
 
 ```bash
-echobrief install --harness claude
-echobrief install --harness hermes
+tldr install --harness claude
+tldr install --harness hermes
 ```
 
 The installer copies the matching hook into the harness config directory and
 updates the harness settings where needed. Hooks call the local daemon, so start
-`echobrief serve` before expecting spoken completions.
+`tldr serve` before expecting spoken completions.
 
 ## Run With Docker
 
@@ -233,7 +231,7 @@ http://host.docker.internal:9000/v1
 Use a different config file:
 
 ```bash
-ECHOBRIEF_CONFIG=./config.toml docker compose up --build
+TLDR_CONFIG=./config.toml docker compose up --build
 ```
 
 The container runs the server only. Your summarizer and TTS model servers must be
@@ -242,7 +240,7 @@ reachable from inside the container.
 ## Development
 
 ```bash
-make run        # uv run python -m echobrief serve --config config.toml
+make run        # uv run python -m tldr serve --config config.toml
 make test       # typecheck, then unittest
 make typecheck  # uv run ty check src tests
 make check      # lint, format, typecheck, test
@@ -256,7 +254,7 @@ make run CONFIG=/path/to/config.toml
 
 ## Logging
 
-The default logging config lives at `src/echobrief/logging.conf`. Use a
+The default logging config lives at `src/tldr/logging.conf`. Use a
 custom logging config from TOML:
 
 ```toml

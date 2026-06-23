@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from echobrief.config import ConfigError, load_config
+from tldr.config import ConfigError, load_config
 
 
 class ConfigTests(unittest.TestCase):
@@ -126,7 +126,9 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(profile.generate_kwargs["response_format"], "wav")
 
     def test_remote_example_config_loads_remote_profiles(self):
-        cfg = load_config("config.remote.example.toml", cwd=Path.cwd(), home=Path.home())
+        cfg = load_config(
+            "config.remote.example.toml", cwd=Path.cwd(), home=Path.home()
+        )
 
         self.assertEqual(cfg.server.host, "0.0.0.0")
         self.assertEqual(cfg.server.port, 9200)
@@ -142,15 +144,17 @@ class ConfigTests(unittest.TestCase):
             "http://127.0.0.1:9000/v1",
         )
 
-    def test_apple_local_example_config_loads_local_defaults(self):
-        cfg = load_config("config.apple-local.example.toml", cwd=Path.cwd(), home=Path.home())
+    def test_local_example_config_loads_local_defaults(self):
+        cfg = load_config("config.local.example.toml", cwd=Path.cwd(), home=Path.home())
 
         self.assertEqual(cfg.server.host, "127.0.0.1")
         self.assertEqual(cfg.server.port, 9200)
         self.assertEqual(cfg.summarizer.default_profile, "qwen25")
         self.assertEqual(cfg.tts.default_profile, "kokoro")
         self.assertEqual(cfg.tts.profiles["kokoro"].backend, "mlx")
-        self.assertEqual(cfg.tts.profiles["kokoro"].model, "mlx-community/Kokoro-82M-bf16")
+        self.assertEqual(
+            cfg.tts.profiles["kokoro"].model, "mlx-community/Kokoro-82M-bf16"
+        )
         self.assertEqual(cfg.tts.profiles["remote-kokoro"].backend, "remote")
 
     def test_cwd_config_beats_user_config(self):
@@ -159,8 +163,8 @@ class ConfigTests(unittest.TestCase):
             cwd = root / "cwd"
             home = root / "home"
             cwd.mkdir()
-            (home / ".config" / "echobrief").mkdir(parents=True)
-            (home / ".config" / "echobrief" / "config.toml").write_text(
+            (home / ".config" / "tldr").mkdir(parents=True)
+            (home / ".config" / "tldr" / "config.toml").write_text(
                 '[tts.profiles.qwen.generate_kwargs]\nvoice = "UserVoice"\n',
                 encoding="utf-8",
             )

@@ -1,6 +1,6 @@
 import unittest
 
-from echobrief.request import RequestError, SpeechRequest
+from tldr.request import RequestError, SpeechRequest
 
 
 class RequestTests(unittest.TestCase):

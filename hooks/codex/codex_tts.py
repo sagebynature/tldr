@@ -121,7 +121,7 @@ def main() -> int:
     log_file = Path(os.environ.get("CODEX_TTS_LOG", "/tmp/codex-tts.log"))
     payload_log = Path(os.environ.get("CODEX_TTS_PAYLOAD_LOG", "/tmp/codex-tts-payload.json"))
     state_file = Path(os.environ.get("CODEX_TTS_STATE_FILE", str(Path.home() / ".codex/tts.enabled")))
-    tts_bin = os.environ.get("CODEX_TTS_BIN", "echobrief")
+    tts_bin = os.environ.get("CODEX_TTS_BIN", "tldr")
 
     if not state_file.is_file():
         return 0

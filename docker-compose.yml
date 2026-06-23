@@ -1,10 +1,10 @@
 services:
-  echobrief:
+  tldr:
     build: .
-    command: ["python", "-m", "echobrief", "serve", "--config", "/config/config.toml"]
+    command: ["python", "-m", "tldr", "serve", "--config", "/config/config.toml"]
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
       - "9200:9200"
     volumes:
-      - ${ECHOBRIEF_CONFIG:-./config.docker.toml}:/config/config.toml:ro
+      - ${TLDR_CONFIG:-./config.docker.toml}:/config/config.toml:ro

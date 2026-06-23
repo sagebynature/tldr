@@ -66,7 +66,7 @@ def _spawn(text: str, session_id: str) -> None:
     if os.name != "nt":
         kwargs["start_new_session"] = True
     subprocess.Popen(
-            ["echobrief", "speak", "--session_id", session_id, text],
+            ["tldr", "speak", "--session_id", session_id, text],
         **kwargs,
     )
 
@@ -79,7 +79,7 @@ def main() -> int:
             if text:
                 _spawn(text, _session_id(payload))
     except Exception as exc:
-        print(f"EchoBrief Hermes hook ignored error: {exc}", file=sys.stderr)
+        print(f"TL;DR Hermes hook ignored error: {exc}", file=sys.stderr)
     print("{}")
     return 0
 

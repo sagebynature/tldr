@@ -3,7 +3,7 @@ requires = ["setuptools>=64", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "echobrief"
+name = "tldr"
 version = "0.0.1"
 description = "Harness-neutral local speech brief daemon for agent responses"
 readme = "README.md"
@@ -22,13 +22,13 @@ dev = ["ty==0.0.23", "ruff>=0.5", "httpx"]
 package = true
 
 [project.scripts]
-echobrief = "echobrief.cli:main"
+tldr = "tldr.cli:main"
 
 [tool.ty.environment]
 root = ["src"]
 
 [tool.setuptools.package-data]
-echobrief = ["*.toml", "hooks/*", "logging.conf"]
+tldr = ["*.toml", "hooks/*", "logging.conf"]
 
 [tool.semantic_release]
 version_toml = ["pyproject.toml:project.version"]

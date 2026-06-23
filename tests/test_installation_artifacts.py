@@ -7,7 +7,7 @@ class InstallationArtifactTests(unittest.TestCase):
     def test_docker_compose_uses_container_network_config(self):
         compose = Path("docker-compose.yml").read_text(encoding="utf-8")
 
-        self.assertIn("${ECHOBRIEF_CONFIG:-./config.docker.toml}", compose)
+        self.assertIn("${TLDR_CONFIG:-./config.docker.toml}", compose)
         self.assertIn("/config/config.toml:ro", compose)
         self.assertIn("host.docker.internal:host-gateway", compose)
         self.assertIn("9200:9200", compose)
@@ -15,7 +15,9 @@ class InstallationArtifactTests(unittest.TestCase):
     def test_dockerfile_installs_with_uv(self):
         dockerfile = Path("Dockerfile").read_text(encoding="utf-8")
 
-        self.assertIn("COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/", dockerfile)
+        self.assertIn(
+            "COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/", dockerfile
+        )
         self.assertIn("RUN uv sync --locked --no-dev", dockerfile)
         self.assertNotIn("pip install", dockerfile)
 
@@ -24,8 +26,14 @@ class InstallationArtifactTests(unittest.TestCase):
         compose = Path("docker-compose.yml").read_text(encoding="utf-8")
 
         self.assertIn('PYTHONPATH="/app/src"', dockerfile)
-        self.assertIn('CMD ["python", "-m", "echobrief", "serve", "--config", "/config/config.toml"]', dockerfile)
-        self.assertIn('command: ["python", "-m", "echobrief", "serve", "--config", "/config/config.toml"]', compose)
+        self.assertIn(
+            'CMD ["python", "-m", "tldr", "serve", "--config", "/config/config.toml"]',
+            dockerfile,
+        )
+        self.assertIn(
+            'command: ["python", "-m", "tldr", "serve", "--config", "/config/config.toml"]',
+            compose,
+        )
 
     def test_docker_example_config_reaches_host_models_and_publishes_daemon(self):
         config = tomllib.loads(Path("config.docker.toml").read_text(encoding="utf-8"))

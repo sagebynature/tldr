@@ -5,7 +5,7 @@ import json
 import os
 import subprocess
 import sys
-from typing import Any
+from typing import Any, cast
 
 
 def _read_payload() -> dict[str, Any]:
@@ -20,17 +20,23 @@ def _last_assistant_text(history: Any) -> str:
     if not isinstance(history, list):
         return ""
     for entry in reversed(history):
-        if not isinstance(entry, dict) or entry.get("role") != "assistant":
+        if not isinstance(entry, dict):
             continue
-        content = entry.get("content")
+        message = cast("dict[str, Any]", entry)
+        if message.get("role") != "assistant":
+            continue
+        content = message.get("content")
         if isinstance(content, str):
             return content.strip()
         if isinstance(content, list):
-            parts = [
-                part.get("text", "")
-                for part in content
-                if isinstance(part, dict) and isinstance(part.get("text"), str)
-            ]
+            parts: list[str] = []
+            for part in content:
+                if not isinstance(part, dict):
+                    continue
+                content_part = cast("dict[str, Any]", part)
+                text_part = content_part.get("text")
+                if isinstance(text_part, str):
+                    parts.append(text_part)
             text = "".join(parts).strip()
             if text:
                 return text
@@ -66,7 +72,7 @@ def _spawn(text: str, session_id: str) -> None:
     if os.name != "nt":
         kwargs["start_new_session"] = True
     subprocess.Popen(
-            ["echobrief", "speak", "--session_id", session_id, text],
+        ["tldr", "speak", "--session_id", session_id, text],
         **kwargs,
     )
 
@@ -79,7 +85,7 @@ def main() -> int:
             if text:
                 _spawn(text, _session_id(payload))
     except Exception as exc:
-        print(f"EchoBrief Hermes hook ignored error: {exc}", file=sys.stderr)
+        print(f"TL;DR Hermes hook ignored error: {exc}", file=sys.stderr)
     print("{}")
     return 0
 

@@ -2,8 +2,8 @@ import json
 import unittest
 from unittest.mock import patch
 
-from echobrief.config import SummarizerConfig, SummarizerProfileConfig
-from echobrief.summarizer import (
+from tldr.config import SummarizerConfig, SummarizerProfileConfig
+from tldr.summarizer import (
     OpenAICompatibleBackend,
     Summarizer,
     count_words,
@@ -302,7 +302,7 @@ class SummarizerTests(unittest.TestCase):
             summary_config(word_threshold=0), backend=BrokenBackend()
         )
 
-        with patch("echobrief.summarizer.logger"):
+        with patch("tldr.summarizer.logger"):
             self.assertEqual(summarizer.summarize("keep this"), "keep this")
 
 

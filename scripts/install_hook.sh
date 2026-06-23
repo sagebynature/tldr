@@ -2,4 +2,4 @@
 set -euo pipefail
 
 harness="${1:-codex}"
-exec echobrief install --harness "$harness"
+exec tldr install --harness "$harness"

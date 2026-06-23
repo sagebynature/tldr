@@ -12,4 +12,4 @@ RUN uv sync --locked --no-dev
 
 EXPOSE 9200
 
-CMD ["python", "-m", "echobrief", "serve", "--config", "/config/config.toml"]
+CMD ["python", "-m", "tldr", "serve", "--config", "/config/config.toml"]

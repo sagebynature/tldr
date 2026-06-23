@@ -48,7 +48,7 @@ export default function ttsSummarizerHook(pi) {
       return;
     }
 
-    const ttsBin = process.env.OMP_TTS_BIN || "echobrief";
+    const ttsBin = process.env.OMP_TTS_BIN || "tldr";
     const sessionId = process.env.OMP_TTS_SESSION_ID || `omp:${ctx?.cwd || process.cwd()}`;
     const args = ["speak", "--session_id", sessionId, text];
 
@@ -57,10 +57,10 @@ export default function ttsSummarizerHook(pi) {
         detached: true,
         stdio: "ignore",
       });
-      child.on("error", () => {});
+      child.on("error", () => { });
       child.unref();
     } catch {
-    // Missing local EchoBrief must not break an OMP turn.
+      // Missing local TL;DR must not break an OMP turn.
     }
   });
 }

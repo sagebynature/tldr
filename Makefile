@@ -18,4 +18,4 @@ typecheck:
 check: lint format typecheck test
 
 run:
-	uv run $(PYTHON) -m echobrief serve --config $(CONFIG)
+	uv run $(PYTHON) -m tldr serve --config $(CONFIG)

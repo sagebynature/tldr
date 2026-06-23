@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from importlib import resources
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
@@ -8,6 +9,12 @@ import tomllib
 
 class ConfigError(ValueError):
     pass
+
+
+EXAMPLE_CONFIG_RESOURCES = {
+    "config.apple-local.example.toml": "config.apple-local.example.toml",
+    "config.remote.example.toml": "config.remote.example.toml",
+}
 
 
 DEFAULT_SYSTEM_PROMPT = """You summarize assistant responses for text-to-speech. Return only the final spoken summary. Do not include reasoning, analysis, planning, explanations, prefaces, markdown, code fences, file paths, URLs, bullets, or formatting. If the content is a question, preserve the question instead of answering it."""
@@ -21,7 +28,7 @@ DEFAULT_USER_PROMPT_TEMPLATE = """Write one complete spoken summary in {max_word
 class ServerConfig:
     host: str = "127.0.0.1"
     port: int = 0
-    state_dir: str = "~/.cache/echobrief"
+    state_dir: str = "~/.cache/tldr"
     auto_start: bool = True
     startup_timeout_ms: int = 3000
     request_timeout_ms: int = 5000
@@ -170,6 +177,23 @@ def _read(path: Path) -> dict[str, Any]:
         raise ConfigError(f"invalid TOML in {path}: {exc}") from exc
 
 
+def _read_example_resource(path: Path) -> dict[str, Any] | None:
+    if path.parent != Path("."):
+        return None
+    resource_name = EXAMPLE_CONFIG_RESOURCES.get(path.name)
+    if resource_name is None:
+        return None
+    resource = resources.files("tldr").joinpath(resource_name)
+    try:
+        text = resource.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return None
+    try:
+        return tomllib.loads(text)
+    except tomllib.TOMLDecodeError as exc:
+        raise ConfigError(f"invalid TOML in packaged {resource_name}: {exc}") from exc
+
+
 def load_config(
     explicit_path: str | None, cwd: Path | None = None, home: Path | None = None
 ) -> Config:
@@ -177,14 +201,17 @@ def load_config(
     home = home or Path.home()
     if explicit_path:
         path = _expand(explicit_path, home=home)
-        if not path.exists():
+        if path.exists():
+            return _apply(_read(path), path)
+        example = _read_example_resource(path)
+        if example is None:
             raise ConfigError(f"config not found: {path}")
-        return _apply(_read(path), path)
+        return _apply(example, path)
 
     cwd_config = cwd / "config.toml"
     if cwd_config.exists():
         return _apply(_read(cwd_config), cwd_config)
-    user_config = home / ".config" / "echobrief" / "config.toml"
+    user_config = home / ".config" / "tldr" / "config.toml"
     if user_config.exists():
         return _apply(_read(user_config), user_config)
     legacy_user_config = home / ".config" / "tts-summarizer" / "config.toml"

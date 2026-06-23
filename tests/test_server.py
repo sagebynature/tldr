@@ -4,10 +4,10 @@ from urllib.error import URLError
 
 from fastapi.testclient import TestClient
 
-from echobrief.config import Config, SummarizerConfig, SummarizerProfileConfig
-from echobrief.server import create_app, run_server
-from echobrief.speech import AudioBytes, AudioChunk
-from echobrief.summarizer import Summarizer
+from tldr.config import Config, SummarizerConfig, SummarizerProfileConfig
+from tldr.server import create_app, run_server
+from tldr.speech import AudioBytes, AudioChunk
+from tldr.summarizer import Summarizer
 
 
 class FakeSummarizer:
@@ -78,14 +78,10 @@ class ServerTests(unittest.TestCase):
                 events.append(("server", sockets))
 
         with (
-            unittest.mock.patch(
-                "echobrief.server.create_app", return_value=FakeApp()
-            ),
-            unittest.mock.patch(
-                "echobrief.server.socket.socket", return_value=FakeSocket()
-            ),
-            unittest.mock.patch("echobrief.server.write_state"),
-            unittest.mock.patch("echobrief.server.uvicorn.Server", FakeServer),
+            unittest.mock.patch("tldr.server.create_app", return_value=FakeApp()),
+            unittest.mock.patch("tldr.server.socket.socket", return_value=FakeSocket()),
+            unittest.mock.patch("tldr.server.write_state"),
+            unittest.mock.patch("tldr.server.uvicorn.Server", FakeServer),
         ):
             self.assertEqual(run_server(Config()), 0)
 
@@ -150,7 +146,7 @@ class ServerTests(unittest.TestCase):
             create_app(Config(), summarizer=FakeSummarizer(), speech=speech)
         )
 
-        with self.assertLogs("echobrief.server", level="INFO") as logs:
+        with self.assertLogs("tldr.server", level="INFO") as logs:
             response = client.post(
                 "/v1/speak",
                 json={"text": "hello"},
