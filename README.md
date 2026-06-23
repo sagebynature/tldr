@@ -33,7 +33,7 @@ included for common agent harnesses so completions can be spoken automatically.
 
 - Python 3.11+
 - `uv`
-- `curl` and `ffplay` for the playback examples
+- `ffplay` for the streaming playback
 - A summarizer backend with an OpenAI-compatible chat completions API
 - A TTS backend with an OpenAI/MLX-Audio-compatible `/audio/speech` API, or local
   MLX audio support on Apple Silicon
