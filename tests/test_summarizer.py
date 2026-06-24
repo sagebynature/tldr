@@ -8,6 +8,7 @@ from tldr.summarizer import (
     Summarizer,
     count_words,
     markdown_to_plain_text,
+    sanitize_for_summary,
 )
 
 
@@ -34,6 +35,14 @@ class SummarizerTests(unittest.TestCase):
             "Done Ship docs",
         )
 
+    def test_sanitize_for_summary_redacts_urls_after_markdown_cleanup(self):
+        self.assertEqual(
+            sanitize_for_summary(
+                "# Done\n\nOpen [docs](https://example.test/path) and https://secret.test/token"
+            ),
+            "Done Open docs and supplied URL",
+        )
+
     def test_threshold_skips_model(self):
         backend = FakeBackend()
         summarizer = Summarizer(summary_config(word_threshold=10), backend=backend)
@@ -58,10 +67,12 @@ class SummarizerTests(unittest.TestCase):
         summarizer = Summarizer(config, backend=backend)
 
         self.assertEqual(
-            summarizer.summarize("# Done\n\nOpen [docs](https://example.test/path)"),
+            summarizer.summarize(
+                "# Done\n\nOpen [docs](https://example.test/path) and https://secret.test/token"
+            ),
             "short result",
         )
-        self.assertEqual(backend.prompt, "Say 40: Done Open docs")
+        self.assertEqual(backend.prompt, "Say 40: Done Open docs and supplied URL")
 
     def test_summarizer_selects_named_profile(self):
         backend = FakeBackend()
