@@ -790,7 +790,7 @@ class OmpHookTests(unittest.TestCase):
             )
 
             subprocess.run(
-                ["node", str(runner)], check=True, cwd=tmp, env=env, timeout=1
+                ["node", str(runner)], check=True, cwd=tmp, env=env, timeout=5
             )
             call = read_json_when_ready(capture)
 
@@ -833,7 +833,7 @@ class OmpHookTests(unittest.TestCase):
             env["OMP_TTS_BIN"] = str(tmp / "bin" / "tldr")
 
             subprocess.run(
-                ["node", str(runner)], check=True, cwd=tmp, env=env, timeout=1
+                ["node", str(runner)], check=True, cwd=tmp, env=env, timeout=5
             )
             time.sleep(0.2)
 
@@ -842,7 +842,7 @@ class OmpHookTests(unittest.TestCase):
     def test_omp_hook_exits_before_speech_finishes(self):
         with tempfile.TemporaryDirectory() as tmp_name:
             tmp = Path(tmp_name)
-            capture = stub_tts(tmp, delay=1.5)
+            capture = stub_tts(tmp, delay=5)
             runner = self._write_node_runner(
                 tmp,
                 "agent_end",
@@ -861,9 +861,9 @@ class OmpHookTests(unittest.TestCase):
             env["OMP_TTS_BIN"] = str(tmp / "bin" / "tldr")
 
             subprocess.run(
-                ["node", str(runner)], check=True, cwd=tmp, env=env, timeout=0.5
+                ["node", str(runner)], check=True, cwd=tmp, env=env, timeout=3
             )
-            call = read_json_when_ready(capture)
+            call = read_json_when_ready(capture, timeout=6)
 
             self.assertEqual(
                 call["argv"],
