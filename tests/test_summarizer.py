@@ -43,6 +43,12 @@ class SummarizerTests(unittest.TestCase):
             "Done Open docs and supplied URL",
         )
 
+    def test_sanitize_for_summary_removes_fenced_code_blocks(self):
+        self.assertEqual(
+            sanitize_for_summary('Before\n\n```python\nprint("secret")\n```\n\nAfter'),
+            "Before After",
+        )
+
     def test_threshold_skips_model(self):
         backend = FakeBackend()
         summarizer = Summarizer(summary_config(word_threshold=10), backend=backend)

@@ -14,6 +14,11 @@ from .config import SummarizerConfig, SummarizerProfileConfig
 logger = logging.getLogger(__name__)
 MARKDOWN_PARSER = MarkdownParser()
 URL_PATTERN = re.compile(r"https?://[^\s<>)\]}]+", re.IGNORECASE)
+CODE_BLOCK_PATTERN = re.compile(r"(?ms)^```[^\n]*\n.*?^```\s*")
+
+
+def remove_code_blocks(text: str) -> str:
+    return CODE_BLOCK_PATTERN.sub(" ", text)
 
 
 class SummaryBackend(Protocol):
@@ -31,7 +36,7 @@ def replace_urls(text: str) -> str:
 
 
 def sanitize_for_summary(text: str) -> str:
-    return replace_urls(markdown_to_plain_text(text))
+    return replace_urls(markdown_to_plain_text(remove_code_blocks(text)))
 
 
 class OpenAICompatibleBackend:
