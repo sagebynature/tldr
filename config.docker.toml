@@ -29,8 +29,8 @@ No markdown, bullets, code fences, URLs, file paths, prefaces, explanations.
 If original asks question, preserve question rather answering it.
 """
 user_prompt_template = """
-Rewrite response into {max_words} words fewer spoken playback.
-Keep same voice intent, just shorter.
+Rewrite below text into {max_words} words or fewer for spoken playback.
+while keeping the intent, just shorter.
 
 {text}
 """
